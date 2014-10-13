@@ -1,0 +1,16 @@
+include Makevars.common
+
+PKG_LIBS += -lz
+
+libs0: libbam.a libbcf.a libtabix.a
+	mkdir -p "${R_PACKAGE_DIR}/usretc${R_ARCH}"
+	cp ../Rsamtools.mk "${R_PACKAGE_DIR}/usretc${R_ARCH}"
+
+libbam.a: $(BAMOBJ)
+	$(AR) -crus $@ $(BAMOBJ)
+
+libbcf.a: $(BCFOBJ)
+	$(AR) -crus $@ $(BCFOBJ)
+
+libtabix.a: $(TABIXOBJ)
+	$(AR) -crus $@ $(TABIXOBJ)
