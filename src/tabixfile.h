@@ -2,16 +2,16 @@
 #define _TABIXFILE_H
 
 #include <Rdefines.h>
-#include "tabix/tabix.h"
+#include "tbx.h"
 
 typedef struct {
-    tabix_t *tabix;
-    ti_iter_t iter;
+    tbx_t *tabix;
+    hts_itr_t iter;
 } _TABIX_FILE;
 
 #define TABIXFILE(b) ((_TABIX_FILE *) R_ExternalPtrAddr(b))
 
-typedef SEXP SCAN_FUN(tabix_t *tabix, ti_iter_t iter, const int size,
+typedef SEXP SCAN_FUN(tbx_t *tabix, hts_itr_t iter, const int size,
                       SEXP state, SEXP rownames);
 
 SCAN_FUN tabix_as_character;

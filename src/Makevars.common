@@ -21,13 +21,10 @@ DFLAGS = -D_USE_KNETFILE -D_FILE_OFFSET_BITS=64 \
 
 PKG_CFLAGS0 = \
   $(SHLIB_OPENMP_CFLAGS) \
-  $(DFLAGS) -I./samtools -I./samtools/bcftools -I./tabix
+  $(DFLAGS)
 
 PKG_LIBS0 = -pthread \
-  $(SHLIB_OPENMP_CFLAGS) \
-  "${R_PACKAGE_DIR}/usrlib${R_ARCH}/libbam.a" \
-  "${R_PACKAGE_DIR}/usrlib${R_ARCH}/libbcf.a" \
-  "${R_PACKAGE_DIR}/usrlib${R_ARCH}/libtabix.a"
+  $(SHLIB_OPENMP_CFLAGS)
 
 .PHONY: all libs clean
 

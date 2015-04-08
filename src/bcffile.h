@@ -2,12 +2,12 @@
 #define _BCFFILE_H_
 
 #include <Rdefines.h>
-#include "bcftools/bcf.h"
+#include "vcf.h"
 
 /* io_bcf.c */
 typedef struct {
-    bcf_t *file;
-    bcf_idx_t *index;
+    vcfFile *file;
+    hts_idx_t *index;
 } _BCF_FILE;
 
 #define BCFFILE(b) ((_BCF_FILE *) R_ExternalPtrAddr(b))
