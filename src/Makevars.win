@@ -3,7 +3,9 @@ include Makevars.common
 # order of -llib important -- bcf, bam before ws2_32
 
 PKG_CFLAGS = ${PKG_CFLAGS0} -D_LARGEFILE64_SOURCE
-PKG_LIBS = ${PKG_LIBS0} -lws2_32
+RHTSLIB_LIBS=$(shell echo 'Rhtslib::pkgconfig("PKG_LIBS")'|\
+    "${R_HOME}/bin/R" --vanilla --slave)
+PKG_LIBS += ${PKG_LIBS0} -lws2_32 $(RHTSLIB_LIBS)
 
 ZLIB_CFLAGS+=$(shell echo 'zlibbioc::pkgconfig("PKG_CFLAGS")'|\
     "${R_HOME}/bin/R" --vanilla --slave)

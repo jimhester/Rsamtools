@@ -6,7 +6,7 @@
 #include <string>
 #include <algorithm>
 #include <list>
-#include "samtools/sam.h"
+#include "sam.h"
 #include "scan_bam_data.h"
 
 using namespace std;
@@ -207,7 +207,7 @@ public:
     }
 
     // (BamRangeIterator only)
-    void mate_inprogress_segments(bamFile bfile, const bam_index_t * bindex,
+    void mate_inprogress_segments(samFile *bfile, const hts_idx_t * bindex,
                                   queue<Segments> &complete,
                                   char qname_prefix, char qname_suffix,
                                   int32_t tid, int32_t beg, int32_t end,
@@ -230,8 +230,8 @@ public:
                 continue;
 
             // search all records that overlap the iterator
-            bam_iter_t iter = bam_iter_query(bindex, mtid, mpos, mpos + 1L);
-            while (bam_iter_read(bfile, iter, bam) >= 0) {
+            hts_itr_t *iter = bam_itr_queryi(bindex, mtid, mpos, mpos + 1L);
+            while (bam_itr_next(bfile, iter, bam) >= 0) {
                 
                 if (bam->core.pos < mpos) // iterate up to mpos
                     continue;
@@ -239,7 +239,7 @@ public:
                     break;
 
                 const char *mate_trimmed_qname =
-                    qname_trim(bam1_qname(bam), qname_prefix, qname_suffix);
+                    qname_trim(bam_get_qname(bam), qname_prefix, qname_suffix);
                 if (is_valid(bam) && 
                     is_template(trimmed_qname, mate_trimmed_qname, bam) &&
                     is_mate(curr, bam, target_len)) {
@@ -247,7 +247,8 @@ public:
                     touched = touched || added;
                 }
             }
-            bam_iter_destroy(iter);
+            sam_itr_destroy(iter);
+
         }
 
         bam_destroy1(bam);

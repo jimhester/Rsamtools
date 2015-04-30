@@ -1,5 +1,5 @@
-#include "samtools/khash.h"
-#include "samtools/sam.h"
+#include "khash.h"
+#include "sam.h"
 #include "bamfile.h"
 #include "bam_data.h"
 #include "scan_bam_data.h"
@@ -94,11 +94,11 @@ static char *_bamseq(const bam1_t * bam, BAM_DATA bd)
     };
 
     const uint32_t len = bam->core.l_qseq;
-    const unsigned char *seq = bam1_seq(bam);
+    const unsigned char *seq = bam_get_seq(bam);
     char *s = Calloc(len + 1, char);
     for (uint32_t i = 0; i < len; ++i)
-        s[i] = key[bam1_seqi(seq, i)];
-    if (bd->reverseComplement && (bam1_strand(bam) == 1))
+        s[i] = key[bam_seqi(seq, i)];
+    if (bd->reverseComplement && (bam_is_rev(bam) == 1))
         _reverseComplement(s, len);
     s[len] = '\0';
     return s;
@@ -107,11 +107,11 @@ static char *_bamseq(const bam1_t * bam, BAM_DATA bd)
 static char *_bamqual(const bam1_t * bam, BAM_DATA bd)
 {
     const uint32_t len = bam->core.l_qseq;
-    const unsigned char *bamq = bam1_qual(bam);
+    const unsigned char *bamq = bam_get_qual(bam);
     char *s = Calloc(len + 1, char);
     for (uint32_t i = 0; i < len; ++i)
         s[i] = bamq[i] + 33;
-    if (bd->reverseComplement && (bam1_strand(bam) == 1))
+    if (bd->reverseComplement && (bam_is_rev(bam) == 1))
         _reverse(s, len);
     s[len] = '\0';
     return s;
@@ -222,7 +222,7 @@ static void _bamtags(const bam1_t * bam, BAM_DATA bd, SEXP tags)
             break;
         case 'd':
             _tag_type_check(tagname, tag, REALSXP);
-            REAL(tag)[idx] = bam_aux2d(aux);
+            REAL(tag)[idx] = bam_aux2f(aux);
             break;
         case 'A':
             _tag_type_check(tagname, tag, STRSXP);
@@ -277,7 +277,7 @@ int _filter1_BAM_DATA(const bam1_t * bam, BAM_DATA bd)
     if (~test & 2047u)
         return 0;
 
-    uint32_t *cigar = bam1_cigar(bam);
+    uint32_t *cigar = bam_get_cigar(bam);
     uint32_t n_cigar = bam->core.n_cigar;
     if (bd->cigar_flag == CIGAR_SIMPLE) {
         if (!(n_cigar == 0 ||
@@ -307,10 +307,10 @@ int _parse1_BAM_DATA(const bam1_t *bam, BAM_DATA bd)
             continue;
         switch (i) {
         case QNAME_IDX:
-            buf = Calloc(strlen(bam1_qname(bam)) + 1, char);
+            buf = Calloc(strlen(bam_get_qname(bam)) + 1, char);
             if (!buf)
                 Rf_error("_parse1: failed to allocate memory");
-            strcpy(buf, bam1_qname(bam));
+            strcpy(buf, bam_get_qname(bam));
             sbd->qname[idx] = buf;
             break;
         case FLAG_IDX:
@@ -322,7 +322,7 @@ int _parse1_BAM_DATA(const bam1_t *bam, BAM_DATA bd)
             break;
         case STRAND_IDX:
             sbd->strand[idx] = bam->core.flag & BAM_FUNMAP ?
-                NA_INTEGER : (bam1_strand(bam) + 1);
+                NA_INTEGER : (bam_is_rev(bam) + 1);
             break;
         case POS_IDX:
             sbd->pos[idx] = bam->core.flag & BAM_FUNMAP ?
@@ -330,7 +330,8 @@ int _parse1_BAM_DATA(const bam1_t *bam, BAM_DATA bd)
             break;
         case QWIDTH_IDX:
             sbd->qwidth[idx] = bam->core.flag & BAM_FUNMAP ?
-                NA_INTEGER : bam_cigar2qlen(&bam->core, bam1_cigar(bam));
+                NA_INTEGER : bam_cigar2qlen(bam->core.n_cigar,
+                                            bam_get_cigar(bam));
             break;
         case MAPQ_IDX:
             if ((bam->core.flag & BAM_FUNMAP))
@@ -341,7 +342,7 @@ int _parse1_BAM_DATA(const bam1_t *bam, BAM_DATA bd)
             if (bam->core.flag & BAM_FUNMAP)
                 sbd->cigar[idx] = NULL;
             else {
-                while (_bamcigar(bam1_cigar(bam), bam->core.n_cigar,
+                while (_bamcigar(bam_get_cigar(bam), bam->core.n_cigar,
                               bd->cigar_buf, bd->cigar_buf_sz) < 0)
                     _grow_BAM_DATA_cigar(bd);
                 sbd->cigar[idx] = _map(sbd->cigarhash, bd->cigar_buf);
@@ -387,7 +388,7 @@ int _parse1_BAM_DATA(const bam1_t *bam, BAM_DATA bd)
 
 void _finish1range_BAM_DATA(BAM_DATA  bd)
 {
-    bam_header_t *header = _bam_file_BAM_DATA(bd)->file->header;
+    bam_hdr_t *header = sam_hdr_read(_bam_file_BAM_DATA(bd)->file);
     SCAN_BAM_DATA sbd = (SCAN_BAM_DATA) bd->extra;
     _finish1range_SCAN_BAM_DATA(sbd, header, bd->irange);
 }

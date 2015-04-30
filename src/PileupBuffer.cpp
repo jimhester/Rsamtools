@@ -38,7 +38,7 @@ int Pileup::insert(uint32_t tid, uint32_t pos, int n,
 
             // invariant: alignments that fail strand criterion not included
             if(pileup->hasStrands())
-                strand = bam1_strand(curBam->b) ? '-' : '+';
+                strand = bam_is_rev(curBam->b) ? '-' : '+';
 
             // IMPORTANT: it's essential that propagating insertions
             // remains in this position relative to other
@@ -55,7 +55,7 @@ int Pileup::insert(uint32_t tid, uint32_t pos, int n,
                 continue;
 
             // individual nucleotide disqualifiers
-            const uint8_t basequal = bam1_qual(curBam->b)[curBam->qpos];
+            const uint8_t basequal = bam_get_qual(curBam->b)[curBam->qpos];
             if(basequal < pileup->min_baseq()) continue;
             bool isDeletion = curBam->is_del;
             if(isDeletion && !pileup->include_deletions())
@@ -64,7 +64,7 @@ int Pileup::insert(uint32_t tid, uint32_t pos, int n,
                 nucleotide = '-';
             else {
                 nucleotide =
-                    char(bam_nt16_rev_table[bam1_seqi(bam1_seq(curBam->b),
+                    char(seq_nt16_str[bam_seqi(bam_get_seq(curBam->b),
                                                       curBam->qpos)]);
             }
 

@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <sys/stat.h>
-#include "bam_endian.h"
+#include "../bam_endian.h"
 #include "kstring.h"
 #include "bcf.h"
 #ifdef _USE_KNETFILE

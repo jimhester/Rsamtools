@@ -7,7 +7,7 @@
 #include <utility>
 #include <algorithm>
 #include <cassert>
-#include "samtools/bam.h"
+#include "sam.h"
 #include "ResultManager.h"
 #include "utilities.h"
 #include <Rinternals.h>
@@ -17,30 +17,30 @@ class PosCacheColl;
 
 class PileupBuffer {
 protected:
-    bam_plbuf_t *plbuf;
+    bam_plp_t plpbuf;
     const char *rname;
     uint32_t start, end;
 public:
-    PileupBuffer() : plbuf(NULL) {}
+    PileupBuffer() : plpbuf(NULL) {}
     virtual ~PileupBuffer() {
-        plbuf_destroy();
+        plpbuf_destroy();
     }
     void init(const char *_rname, const int _start, const int _end) {
-        plbuf_init();
+        plpbuf_init();
         rname = _rname;
         start = _start;
         end = _end;
     }
-    void plbuf_destroy() {
-        if (plbuf != NULL) {
-            bam_plbuf_destroy(plbuf);
-            plbuf = NULL;
+    void plpbuf_destroy() {
+        if (plpbuf != NULL) {
+            bam_plp_destroy(plpbuf);
+            plpbuf = NULL;
         }
     }
-    void plbuf_push(const bam1_t *bam) {
-        bam_plbuf_push(bam, plbuf);
+    void plpbuf_push(const bam1_t *bam) {
+        bam_plp_push(plpbuf, bam);
     }
-    virtual void plbuf_init() = 0;
+    virtual void plpbuf_init() = 0;
     virtual SEXP yield() = 0;
     virtual void signalEOI() = 0;
 };
@@ -149,14 +149,14 @@ public:
     bool isBufferedPileup() const {
         return isBuffered;
     }
-    void plbuf_init() {
-        plbuf = bam_plbuf_init(insert, this);
+    void plpbuf_init() {
+        plpbuf = bam_plp_init(NULL, this);
         int theDepth = max_depth();
         if(theDepth < 1)
             Rf_error("'max_depth' must be greater than 0, got '%d'", theDepth);
         // +1 essential because when maxcnt > 1 num reads processed = maxcnt - 1
         int num_reads_to_process = theDepth < 2 ? 1 : theDepth + 1;
-        bam_plp_set_maxcnt(plbuf->iter, num_reads_to_process);
+        bam_plp_set_maxcnt(plpbuf, num_reads_to_process);
     }
     static int insert(uint32_t tid, uint32_t pos, int n,
                       const bam_pileup1_t *pl, void *data);

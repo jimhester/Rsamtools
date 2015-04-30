@@ -145,7 +145,7 @@ SEXP _get_or_grow_SCAN_BAM_DATA(BAM_DATA bd, int len)
     return VECTOR_ELT(sbd->result, bd->irange);
 }
 
-void _finish1range_SCAN_BAM_DATA(SCAN_BAM_DATA sbd, bam_header_t *header,
+void _finish1range_SCAN_BAM_DATA(SCAN_BAM_DATA sbd, bam_hdr_t *header,
 				 int irange)
 {
     /* FIXME: replace mrnm '=' with rname */

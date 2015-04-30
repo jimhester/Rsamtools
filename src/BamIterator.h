@@ -9,6 +9,7 @@
 #include <map>
 #include "Template.h"
 #include "bam_data.h"
+#include "bgzf.h"
 
 class BamIterator {
 
@@ -24,8 +25,8 @@ protected:
     Templates templates;
     queue<list<const bam1_t *> > complete;
 
-    const bam_index_t *bindex;
-    bam_header_t *header;
+    const hts_idx_t *bindex;
+    bam_hdr_t *header;
     bam1_t *bam;
 
     char qname_prefix_end() const {
@@ -58,15 +59,15 @@ protected:
         if (!_filter1_BAM_DATA(bam, bam_data))
             return;
         const char *trimmed_qname =
-            Template::qname_trim(bam1_qname(bam), qname_prefix_end(),
+            Template::qname_trim(bam_get_qname(bam), qname_prefix_end(),
                                  qname_suffix_start());
         if (templates[trimmed_qname].add_segment(bam))
             touched_templates.insert(trimmed_qname);
     }
 
-    virtual void iterate_inprogress(bamFile bfile) = 0;
+    virtual void iterate_inprogress(samFile *bfile) = 0;
 
-    virtual void finalize_inprogress(bamFile bfile) {
+    virtual void finalize_inprogress(samFile*) {
         Templates::iterator it;
         // transfer Template::ambiguous to BamIterator::ambiguous
         // transfer Template::inprogress and Template::invalid to 
@@ -81,18 +82,18 @@ public:
     bool iter_done;
 
     // constructor / destructor
-    BamIterator(bamFile bfile, const bam_index_t *bindex) :
-        bindex(bindex), iter_done(false),
-        bam(NULL), bam_data(NULL)
+    BamIterator(samFile *bfile, const hts_idx_t *bindex) :
+        bam_data(NULL), bindex(bindex), bam(NULL),
+        iter_done(false)
     {
-        bam_seek(bfile, 0, 0);
-        header = bam_header_read(bfile);
+        bgzf_seek(bfile->fp.bgzf, 0, 0);
+        header = sam_hdr_read(bfile);
     }
 
     virtual ~BamIterator() {
         if (NULL != bam)
             bam_destroy1(bam);
-        bam_header_destroy(header);
+        bam_hdr_destroy(header);
     }
 
     void set_bam_data(BAM_DATA bd) {
@@ -100,7 +101,7 @@ public:
     }
 
     // yield
-    void yield(bamFile bfile, bam_mates_t *result) {
+    void yield(samFile *bfile, bam_mates_t *result) {
         if (complete.empty() && !iter_done)
             iterate_inprogress(bfile);
         if (complete.empty() && !templates.empty())

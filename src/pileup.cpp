@@ -42,8 +42,12 @@ static void _finish_buffered_yieldSize_chunk(BAM_DATA bd) {
 
 static SEXP _pileup_bam(SEXP ext, SEXP space, SEXP keepFlags,
     SEXP reverseComplement, SEXP isSimpleCigar, SEXP tagFilter,
-    SEXP yieldSize, SEXP obeyQname, SEXP asMates, SEXP qnamePrefixEnd,
-    SEXP qnameSuffixStart, PileupBuffer& buffer)
+    SEXP yieldSize, SEXP obeyQname, SEXP asMates,
+    /* Leave qnamePrefixEnd and qnameSuffixStart unnamed since they're
+     * not used here (but included for sake of interface) but the
+     * compiler complains if we name them */
+    SEXP, SEXP,
+    PileupBuffer& buffer)
 {
     _check_isbamfile(ext, "pileup");
     _checkparams(space, keepFlags, isSimpleCigar);
@@ -111,7 +115,7 @@ static SEXP _pileup_bam(SEXP ext, SEXP space, SEXP keepFlags,
     return result;
 }
 
-static SEXP _bamheaderAsSeqnames(bam_header_t *header) {
+static SEXP _bamheaderAsSeqnames(bam_hdr_t *header) {
     if(header == NULL)
         Rf_error("'header' must not be NULL");
     int numSeqnames = header->n_targets;
@@ -138,8 +142,10 @@ extern "C" {
             Rf_error("'schema' must be list()");
         if (!Rf_isVector(pileupParams))
             Rf_error("'pileupParams' must be list()");
+        bam_hdr_t *hdr = sam_hdr_read(BAMFILE(ext)->file);
         SEXP seqnamesLevels =
-            PROTECT(_bamheaderAsSeqnames(BAMFILE(ext)->file->header));
+            PROTECT(_bamheaderAsSeqnames(hdr));
+        bam_hdr_destroy(hdr);
         // 'ranged' means user asked for specific genomic range(s) by
         // providing 'which' argument to 'ScanBamParam'
         bool isRanged = space != R_NilValue;

@@ -9,10 +9,13 @@ static void _tabixfile_close(SEXP ext)
 {
     _TABIX_FILE *tfile = TABIXFILE(ext);
     if (NULL != tfile->tabix)
-        ti_close(tfile->tabix);
+        tbx_destroy(tfile->tabix);
     tfile->tabix = NULL;
     if (NULL != tfile->iter)
-        ti_iter_destroy(tfile->iter);
+        tbx_itr_destroy(tfile->iter);
+    if (NULL != tfile->fp)
+        hts_close(tfile->fp);
+    tfile->fp = NULL;
     tfile->iter = NULL;
 }
 
@@ -40,13 +43,13 @@ SEXP tabixfile_open(SEXP filename, SEXP indexname)
         Rf_error("'indexname' must be character(1)");
 
     _TABIX_FILE *tfile = Calloc(1, _TABIX_FILE);
-    tfile->tabix = ti_open(translateChar(STRING_ELT(filename, 0)),
-                           translateChar(STRING_ELT(indexname, 0)));
+    tfile->tabix = tbx_index_load(translateChar(STRING_ELT(filename, 0)));
     if (NULL == tfile->tabix) {
         Free(tfile);
         Rf_error("failed to open file");
     }
     tfile->iter = NULL;
+    tfile->fp = hts_open(CHAR(STRING_ELT(filename, 0)), "r");
 
     SEXP ext = PROTECT(R_MakeExternalPtr(tfile, TABIXFILE_TAG, filename));
     R_RegisterCFinalizerEx(ext, _tabixfile_finalizer, TRUE);
@@ -76,7 +79,7 @@ SEXP tabixfile_isopen(SEXP ext)
 SEXP index_tabix(SEXP filename, SEXP format, SEXP seq, SEXP begin, SEXP end,
                  SEXP skip, SEXP comment, SEXP zeroBased)
 {
-    ti_conf_t conf = ti_conf_gff;
+    tbx_conf_t conf = tbx_conf_gff;
 
     if (!IS_CHARACTER(filename) || 1L != Rf_length(filename))
         Rf_error("'filename' must be character(1)");
@@ -86,15 +89,15 @@ SEXP index_tabix(SEXP filename, SEXP format, SEXP seq, SEXP begin, SEXP end,
     if (1L == Rf_length(format)) {
         const char *txt = CHAR(STRING_ELT(format, 0));
         if (strcmp(txt, "gff") == 0)
-            conf = ti_conf_gff;
+            conf = tbx_conf_gff;
         else if (strcmp(txt, "bed") == 0)
-            conf = ti_conf_bed;
+            conf = tbx_conf_bed;
         else if (strcmp(txt, "sam") == 0)
-            conf = ti_conf_sam;
+            conf = tbx_conf_sam;
         else if (strcmp(txt, "vcf") == 0 || strcmp(txt, "vcf4") == 0)
-            conf = ti_conf_vcf;
+            conf = tbx_conf_vcf;
         else if (strcmp(txt, "psltbl") == 0)
-            conf = ti_conf_psltbl;
+            conf = tbx_conf_psltbl;
         else
             Rf_error("format '%s' unrecognized", txt);
     } else {
@@ -115,53 +118,52 @@ SEXP index_tabix(SEXP filename, SEXP format, SEXP seq, SEXP begin, SEXP end,
         conf.meta_char = CHAR(STRING_ELT(comment, 0))[0];
     if (IS_LOGICAL(zeroBased) && 1L == Rf_length(zeroBased) &&
         TRUE == LOGICAL(zeroBased)[0])
-        conf.preset |= TI_FLAG_UCSC;
+        conf.preset |= TBX_UCSC;
 
     if (1 != bgzf_is_bgzf(fname))
         Rf_error("file does not appear to be bgzip'd");
-    if (-1L == ti_index_build(fname, &conf))
+    if (-1L == tbx_index_build(fname, 0, &conf))
         Rf_error("index build failed");
 
     return filename;
 }
 
-const char *_tabix_read(tabix_t *t, ti_iter_t iter, int *len)
+const char *_tabix_read(htsFile *fp, tbx_t *t, hts_itr_t *iter)
 {
-    const char *line = ti_read(t, iter, len);
-    if (t->fp->errcode)
-        Rf_error("read line failed (error code %d); corrupt or invalid file?",
-                 t->fp->errcode);
-    return line;
+    kstring_t str = {0,0,0};
+    tbx_itr_next(fp, t, iter, &str);
+    /* what does an error look like vs. end of input? */
+    Rf_error("How to detect and report errors in Brave New World?");
+    return ks_release(&str);
 }
 
-SEXP _header_lines(tabix_t * tabix, const ti_conf_t * conf)
+SEXP _header_lines(tbx_t * tabix, const tbx_conf_t * conf, htsFile *fp)
 {
     const int GROW_BY = 100;
     SEXP lns;
     int i_lns = 0, pidx;
 
-    ti_iter_t iter = ti_query(tabix, NULL, 0, 0);
+    hts_itr_t *iter = tbx_itr_queryi(tabix, HTS_IDX_START, 0, 0);
     uint64_t curr_off = 0;
     const char *s;
-    int len;
 
     if (NULL == iter)
         Rf_error("failed to obtain tabix iterator");
 
     PROTECT_WITH_INDEX(lns = NEW_CHARACTER(0), &pidx);
-    curr_off = bgzf_tell(tabix->fp);
-    while (NULL != (s = _tabix_read(tabix, iter, &len))) {
+    curr_off = bgzf_tell(fp->fp.bgzf);
+    while (NULL != (s = _tabix_read(fp, tabix, iter))) {
         if ((int) (*s) != conf->meta_char)
             break;
-	curr_off = bgzf_tell(tabix->fp);
+	curr_off = bgzf_tell(fp->fp.bgzf);
         if (0 == (i_lns % GROW_BY)) {
             lns = Rf_lengthgets(lns, Rf_length(lns) + GROW_BY);
             REPROTECT(lns, pidx);
         }
         SET_STRING_ELT(lns, i_lns++, mkChar(s));
     }
-    ti_iter_destroy(iter);
-    bgzf_seek(tabix->fp, curr_off, SEEK_SET);
+    tbx_itr_destroy(iter);
+    bgzf_seek(fp->fp.bgzf, curr_off, SEEK_SET);
 
     lns = Rf_lengthgets(lns, i_lns);
     UNPROTECT(1);
@@ -172,8 +174,8 @@ SEXP _header_lines(tabix_t * tabix, const ti_conf_t * conf)
 SEXP header_tabix(SEXP ext)
 {
     _checkext(ext, TABIXFILE_TAG, "scanTabix");
-    tabix_t *tabix = TABIXFILE(ext)->tabix;
-    if (0 != ti_lazy_index_load(tabix))
+    tbx_t *tabix = TABIXFILE(ext)->tabix;
+    if (0 != tbx_index_load(TABIXFILE(ext)->fp->fn))
         Rf_error("'seqnamesTabix' failed to load index");
 
     SEXP result = PROTECT(NEW_LIST(5)), tmp, nms;
@@ -187,7 +189,7 @@ SEXP header_tabix(SEXP ext)
 
     /* seqnames */
     int n;
-    const char **seqnames = ti_seqname(tabix->idx, &n);
+    const char **seqnames = tbx_seqnames(tabix, &n);
     if (n < 0)
         Rf_error("'seqnamesTabix' found <0 (!) seqnames");
     tmp = NEW_CHARACTER(n);
@@ -196,7 +198,7 @@ SEXP header_tabix(SEXP ext)
         SET_STRING_ELT(tmp, i, mkChar(seqnames[i]));
     free(seqnames);
 
-    const ti_conf_t *conf = ti_get_conf(tabix->idx);
+    const tbx_conf_t *conf = &(tabix->conf);
 
     /* indexColumns */
     tmp = NEW_INTEGER(3);
@@ -220,22 +222,21 @@ SEXP header_tabix(SEXP ext)
     SET_VECTOR_ELT(result, 3, ScalarString(mkChar(comment)));
 
     /* header lines */
-    SET_VECTOR_ELT(result, 4, _header_lines(tabix, conf));
+    SET_VECTOR_ELT(result, 4, _header_lines(tabix, conf, TABIXFILE(ext)->fp));
 
     UNPROTECT(1);
     return result;
 }
 
-SEXP tabix_as_character(tabix_t *tabix, ti_iter_t iter, const int size, 
-                        SEXP state, SEXP rownames)
+SEXP tabix_as_character(htsFile *fp, tbx_t *tabix, hts_itr_t *iter,
+                        const int size, SEXP state, SEXP rownames)
 {
     const double SCALE = 1.6;
-    const ti_conf_t *conf = ti_get_conf(tabix->idx);
+    const tbx_conf_t *conf = &(tabix->conf);
 
-    int buflen = 4096;
+    size_t buflen = 4096;
     char *buf = Calloc(buflen, char);
 
-    int linelen;
     const char *line;
 
     int irec = 0, nrec, pidx;
@@ -248,7 +249,7 @@ SEXP tabix_as_character(tabix_t *tabix, ti_iter_t iter, const int size,
     if (R_NilValue != state)
         Rf_error("[internal] expected 'NULL' state in tabix_as_character");
 
-    while (NULL != (line = _tabix_read(tabix, iter, &linelen)))
+    while (NULL != (line = _tabix_read(fp, tabix, iter)))
     {
         if (conf->meta_char == *line)
             continue;
@@ -259,6 +260,7 @@ SEXP tabix_as_character(tabix_t *tabix, ti_iter_t iter, const int size,
             REPROTECT(record, pidx);
         }
 
+        size_t linelen = strlen(line);
         if (linelen + 1 > buflen) {
             Free(buf);
             buflen = 2 * linelen;
@@ -281,19 +283,22 @@ SEXP tabix_as_character(tabix_t *tabix, ti_iter_t iter, const int size,
     return record;
 }
 
-SEXP tabix_count(tabix_t *tabix, ti_iter_t iter, const int size, 
+SEXP tabix_count(htsFile *fp, tbx_t *tabix, hts_itr_t *iter, const int size, 
                  SEXP state, SEXP rownames)
 {
-    const ti_conf_t *conf = ti_get_conf(tabix->idx);
+    /* suppress warning about unused parameter; want consisten
+     * signature for SCAN_FUN */
+    (void) size;
+    const tbx_conf_t *conf = &(tabix->conf);
     const char *line;
-    int linelen, irec = 0;
+    int irec = 0;
 
     if (R_NilValue != rownames)
         Rf_error("[internal] expected 'NULL' rownames in tabix_count");
     if (R_NilValue != state)
         Rf_error("[internal] expected 'NULL' state in tabix_count");
 
-    while (NULL != (line = _tabix_read(tabix, iter, &linelen)))
+    while (NULL != (line = _tabix_read(fp, tabix, iter)))
     {
         if (conf->meta_char == *line)
             continue;
@@ -311,7 +316,7 @@ SEXP scan_tabix(SEXP ext, SEXP space, SEXP yield, SEXP fun,
         Rf_error("'yieldSize' must be integer(1)");
     _checkext(ext, TABIXFILE_TAG, "scanTabix");
 
-    tabix_t *tabix = TABIXFILE(ext)->tabix;
+    tbx_t *tabix = TABIXFILE(ext)->tabix;
     SCAN_FUN *scan = (SCAN_FUN *) R_ExternalPtrAddr(fun);
 
     SEXP spc = VECTOR_ELT(space, 0);
@@ -320,38 +325,39 @@ SEXP scan_tabix(SEXP ext, SEXP space, SEXP yield, SEXP fun,
 
     PROTECT(result = NEW_LIST(nspc == 0 ? 1 : nspc));
     if (0 == nspc) {
-        ti_iter_t iter = TABIXFILE(ext)->iter;
+        hts_itr_t *iter = TABIXFILE(ext)->iter;
         if (NULL == iter) {
-            if (0 != ti_lazy_index_load(tabix))
+            if (0 != tbx_index_load(TABIXFILE(ext)->fp->fn))
                 Rf_error("'scanTabix' failed to load index");
-            iter = TABIXFILE(ext)->iter = ti_iter_first();
         }
-        elt = scan(tabix, iter, INTEGER(yield)[0], state, rownames);
+        elt = scan(TABIXFILE(ext)->fp, tabix, iter, INTEGER(yield)[0],
+                   state, rownames);
         SET_VECTOR_ELT(result, 0, elt);
     } else {
         const int
             *start = INTEGER(VECTOR_ELT(space, 1)),
             *end = INTEGER(VECTOR_ELT(space, 2));
-        if (0 != ti_lazy_index_load(tabix))
+        if (0 != tbx_index_load(TABIXFILE(ext)->fp->fn))
             Rf_error("'scanTabix' failed to load index");
 
         for (int ispc = 0; ispc < nspc; ++ispc) {
             int ibeg, iend, tid;
-            ti_iter_t iter;
+            hts_itr_t *iter;
             const char *tid_name;
 
             ibeg = start[ispc] == 0 ? 0 : start[ispc] - 1;
             iend = end[ispc];
             tid_name = CHAR(STRING_ELT(spc, ispc));
-            tid = ti_get_tid(tabix->idx, tid_name);
+            tid = tbx_name2id(tabix, tid_name);
             if (0 > tid)
                 Rf_error("'%s' not present in tabix index", tid_name);
-            iter = ti_queryi(tabix, tid, ibeg, iend);
+            iter = tbx_itr_queryi(tabix, tid, ibeg, iend);
 
-            elt = scan(tabix, iter, NA_INTEGER, state, rownames);
+            elt = scan(TABIXFILE(ext)->fp, tabix, iter, NA_INTEGER,
+                       state, rownames);
             SET_VECTOR_ELT(result, ispc, elt);
 
-            ti_iter_destroy(iter);
+            tbx_itr_destroy(iter);
         }
     }
 

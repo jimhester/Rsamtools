@@ -2,6 +2,8 @@
 #include "io_sam.h"
 #include "bam_mate_iter.h"
 #include "utilities.h"
+#include "sam.h"
+
 
 static SEXP BAMFILE_TAG = NULL;
 #define TYPE_BAM 1
@@ -11,22 +13,28 @@ void _check_isbamfile(SEXP ext, const char *lbl)
     _checkext(ext, BAMFILE_TAG, lbl);
 }
 
-samfile_t *_bam_tryopen(const char *filename, const char *filemode, void *aux)
+samFile *_bam_tryopen(const char *filename, const char *filemode)
 {
-    samfile_t *sfile = samopen(filename, filemode, aux);
+    samFile *sfile = hts_open(filename, filemode);
+    /* header is now independent of samFile, so test separately */
+    bam_hdr_t *head = sam_hdr_read(sfile);
     if (sfile == 0)
         Rf_error("failed to open SAM/BAM file\n  file: '%s'", filename);
-    if (sfile->header == 0 || sfile->header->n_targets == 0) {
-        samclose(sfile);
+    /* test if header empty */
+    if (head == NULL || head->n_targets == 0) {
+        bam_hdr_destroy(head);
+        sam_close(sfile);
         Rf_error("SAM/BAM header missing or empty\n  file: '%s'", filename);
     }
+    bam_hdr_destroy(head);
     return sfile;
 }
 
-static bam_index_t *_bam_tryindexload(const char *indexname)
+static hts_idx_t *_bam_tryindexload(const char *indexname)
 {
-    bam_index_t *index = bam_index_load(indexname);
-    if (index == 0)
+    /* FIX ME: better to open file and try loading idx via sam_index_load? */
+    hts_idx_t *index = hts_idx_load(indexname, HTS_FMT_BAI);
+    if (index == NULL)
         Rf_error("failed to load BAM index\n  file: %s", indexname);
     return index;
 }
@@ -35,9 +43,9 @@ static void _bamfile_close(SEXP ext)
 {
     BAM_FILE bfile = BAMFILE(ext);
     if (NULL != bfile->file)
-        samclose(bfile->file);
+        sam_close(bfile->file);
     if (NULL != bfile->index)
-        bam_index_destroy(bfile->index);
+        hts_idx_destroy(bfile->index);
     if (NULL != bfile->iter)
         bam_mate_iter_destroy(bfile->iter);
     if (NULL != bfile->pbuffer)
@@ -70,13 +78,14 @@ static BAM_FILE _bamfile_open_r(SEXP filename, SEXP indexname, SEXP filemode)
     bfile->file = NULL;
     if (0 != Rf_length(filename)) {
         const char *cfile = translateChar(STRING_ELT(filename, 0));
-        bfile->file = _bam_tryopen(cfile, CHAR(STRING_ELT(filemode, 0)), 0);
-        if ((bfile->file->type & TYPE_BAM) != 1) {
-            samclose(bfile->file);
+        bfile->file = _bam_tryopen(cfile, CHAR(STRING_ELT(filemode, 0)));
+        /* Should be less restrictive to allow other formats? */
+        if (bfile->file->format.format != bam) {
+            sam_close(bfile->file);
             Free(bfile);
             Rf_error("'filename' is not a BAM file\n  file: %s", cfile);
         }
-        bfile->pos0 = bam_tell(bfile->file->x.bam);
+        bfile->pos0 = bgzf_tell(bfile->file->fp.bgzf);
         bfile->irange0 = 0;
     }
 
@@ -85,7 +94,7 @@ static BAM_FILE _bamfile_open_r(SEXP filename, SEXP indexname, SEXP filemode)
         const char *cindex = translateChar(STRING_ELT(indexname, 0));
         bfile->index = _bam_tryindexload(cindex);
         if (NULL == bfile->index) {
-            samclose(bfile->file);
+            sam_close(bfile->file);
             Free(bfile);
             Rf_error("failed to open BAM index\n  index: %s\n", cindex);
         }
@@ -98,19 +107,18 @@ static BAM_FILE _bamfile_open_r(SEXP filename, SEXP indexname, SEXP filemode)
 
 static BAM_FILE _bamfile_open_w(SEXP file0, SEXP file1)
 {
-    samfile_t *infile, *outfile;
+    samFile *infile, *outfile;
     BAM_FILE bfile;
 
     if (0 == Rf_length(file1))
         Rf_error("'file1' must be a character(1) path to a valid bam file");
-    infile = _bam_tryopen(translateChar(STRING_ELT(file1, 0)), "rb", 0);
-    outfile = _bam_tryopen(translateChar(STRING_ELT(file0, 0)), "wb",
-                           infile->header);
-    samclose(infile);
+    infile = _bam_tryopen(translateChar(STRING_ELT(file1, 0)), "rb");
+    outfile = _bam_tryopen(translateChar(STRING_ELT(file0, 0)), "wb");
+    sam_close(infile);
 
     bfile = (BAM_FILE) Calloc(1, _BAM_FILE);
     bfile->file = outfile;
-    bfile->pos0 = bam_tell(bfile->file->x.bam);
+    bfile->pos0 = bgzf_tell(bfile->file->fp.bgzf);
     bfile->irange0 = 0;
 
     return bfile;
@@ -159,10 +167,11 @@ SEXP bamfile_isincomplete(SEXP ext)
         if (NULL != bfile && NULL != bfile->file) {
             /* heuristic: can we read a record? bam_seek does not
              * support SEEK_END */
-            off_t offset = bam_tell(bfile->file->x.bam);
-            char buf;
-            ans = bam_read(bfile->file->x.bam, &buf, 1) > 0;
-            bam_seek(bfile->file->x.bam, offset, SEEK_SET);
+            off_t offset = bgzf_tell(bfile->file->fp.bgzf);
+            bam1_t *b = bam_init1();
+            ans = bam_read1(bfile->file->fp.bgzf, b) > 0;
+            bam_destroy1(b);
+            bgzf_seek(bfile->file->fp.bgzf, offset, SEEK_SET);
         }
     }
     return ScalarLogical(ans);

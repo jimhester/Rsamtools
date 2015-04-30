@@ -4,7 +4,7 @@
 #include "khash.h"
 #include "ksort.h"
 #include "kstring.h"
-#include "bam_endian.h"
+#include "../samtools/bam_endian.h"
 #ifdef _USE_KNETFILE
 #include "knetfile.h"
 #endif

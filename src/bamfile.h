@@ -3,6 +3,7 @@
 
 #include <Rdefines.h>
 #include "sam.h"
+#include "bgzf.h"
 #include "bambuffer.h"
 #include "bam_mate_iter.h"
 #include "pbuffer_wrapper.h"
@@ -45,7 +46,7 @@ SEXP filter_bamfile(SEXP ext, SEXP space, SEXP keepFlags,
                     SEXP fout_mode);
 
 void _check_isbamfile(SEXP ext, const char *lbl);
-samFile *_bam_tryopen(const char *filename, const char *mode, void *aux);
+samFile *_bam_tryopen(const char *filename, const char *mode);
 
 #ifdef __cplusplus
 }

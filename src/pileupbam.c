@@ -1,5 +1,5 @@
-#include "samtools/bam.h"
-#include "samtools/khash.h"
+#include "sam.h"
+#include "khash.h"
 #include "pileupbam.h"
 #include "bamfile.h"
 #include "utilities.h"
@@ -14,8 +14,8 @@ typedef enum {
 
 typedef struct {
     BAM_FILE bfile;
-    bamFile fp;
-    bam_iter_t iter;
+    samFile *fp;
+    hts_itr_t *iter;
     /* read filter params */
     int min_map_quality;
     uint32_t keep_flag[2];
@@ -61,20 +61,6 @@ KHASH_MAP_INIT_STR(s, int)
 const int QUAL_LEVELS = 94,     /* printable ASCII */
     SEQ_LEVELS = 5;             /* A, C, G, T, N */
 
-static void _bam_header_hash_init(bam_header_t * header)
-{
-    if (0 == header->hash) {
-        int ret, i;
-        khiter_t iter;
-        khash_t(s) * h;
-        header->hash = h = kh_init(s);
-        for (i = 0; i < header->n_targets; ++i) {
-            iter = kh_put(s, h, header->target_name[i], &ret);
-            kh_value(h, iter) = i;
-        }
-    }
-}
-
 /* PILEUP_ITER_T */
 
 static PILEUP_ITER_T *_iter_init(SEXP files, PILEUP_PARAM_T * param)
@@ -87,12 +73,10 @@ static PILEUP_ITER_T *_iter_init(SEXP files, PILEUP_PARAM_T * param)
     for (i = 0; i < iter->n_files; ++i) {
         iter->mfile[i] = iter->mfile[0] + i;
         iter->mfile[i]->bfile = BAMFILE(VECTOR_ELT(files, i));
-        iter->mfile[i]->fp = iter->mfile[i]->bfile->file->x.bam;
+        iter->mfile[i]->fp = iter->mfile[i]->bfile->file;
         iter->mfile[i]->min_map_quality = param->min_map_quality;
         iter->mfile[i]->keep_flag[0] = param->keep_flag[0];
         iter->mfile[i]->keep_flag[1] = param->keep_flag[1];
-        /* header hash destroyed when file closed */
-        _bam_header_hash_init(iter->mfile[i]->bfile->file->header);
     }
 
     iter->plp = Calloc(iter->n_files, const bam_pileup1_t *);
@@ -200,7 +184,7 @@ static int _mplp_read_bam(void *data, bam1_t * b)
 
     do {
         result = mdata->iter ?
-            bam_iter_read(mdata->fp, mdata->iter, b) : bam_read1(mdata->fp, b);
+            sam_itr_next(mdata->fp, mdata->iter, b) : bam_read1(mdata->fp->fp.bgzf, b);
         if (0 >= result)
             break;
 
@@ -331,11 +315,13 @@ static void _mplp_setup_bam(const PILEUP_PARAM_T * param, const SPACE_T * spc,
     BAM_ITER_T **mfile = plp_iter->mfile;
 
     for (int j = 0; j < plp_iter->n_files; ++j) {
+        bam_hdr_t *header = sam_hdr_read(mfile[j]->bfile->file);
         /* set iterator, get pileup */
-        int32_t tid = bam_get_tid(mfile[j]->bfile->file->header, spc->chr);
+        int32_t tid = bam_name2id(header, spc->chr);
+        bam_hdr_destroy(header);
         if (tid < 0)
             Rf_error("'%s' not in bam file %d", spc->chr, j + 1);
-        mfile[j]->iter = bam_iter_query(mfile[j]->bfile->index, tid,
+        mfile[j]->iter = bam_itr_queryi(mfile[j]->bfile->index, tid,
                                         spc->start - 1, spc->end);
     }
     plp_iter->mplp_iter =
@@ -352,7 +338,7 @@ static void _mplp_teardown_bam(PILEUP_ITER_T * iter)
 
     bam_mplp_destroy(iter->mplp_iter);
     for (j = 0; j < iter->n_files; ++j)
-        bam_iter_destroy(iter->mfile[j]->iter);
+        sam_itr_destroy(iter->mfile[j]->iter);
 }
 
 static int _bam1(const PILEUP_PARAM_T * param, const SPACE_T * spc,
@@ -422,15 +408,15 @@ static int _bam1(const PILEUP_PARAM_T * param, const SPACE_T * spc,
                 /* filter */
                 if (p->is_del || p->is_refskip)
                     continue;
-                const uint8_t q = bam1_qual(p->b)[p->qpos];
+                const uint8_t q = bam_get_qual(p->b)[p->qpos];
                 if (param->min_base_quality > q)
                     continue;
                 /* query, e.g., ... */
                 if (param->what & WHAT_SEQ) {
-                    const int s = nuc[bam1_seqi(bam1_seq(p->b), p->qpos)];
+                    const int s = nuc[bam_seqi(bam_get_seq(p->b), p->qpos)];
                     if (s < 0)
                         Rf_error("unexpected nucleotide code '%d'",
-                                 bam1_seqi(bam1_seq(p->b), p->qpos));
+                                 bam_seqi(bam_get_seq(p->b), p->qpos));
                     s0[SEQ_LEVELS * i + s] += 1;
                 }
                 if (param->what & WHAT_QUAL) {

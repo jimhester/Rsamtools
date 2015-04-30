@@ -27,7 +27,7 @@ public:
     void finish1(const int irange) {
         plbuf_push(0);
         SET_VECTOR_ELT(result, irange, buffer.yield());
-        buffer.plbuf_destroy();
+        buffer.plpbuf_destroy();
     }
     // The only way to trigger running the callback function
     // (Pileup::insert in this case) is to push NULL to the buffer and
@@ -35,7 +35,7 @@ public:
     // time yieldSize records are pushed.
     void process_yieldSize_chunk() {
         plbuf_push(0);
-        buffer.plbuf_destroy(); // trigger run of Pileup::insert
+        buffer.plpbuf_destroy(); // trigger run of Pileup::insert
         buffer.init(NULL, 0, 0);
     }
     // intended to be called from _pileup_bam after EOI message sent
@@ -45,7 +45,7 @@ public:
         SET_VECTOR_ELT(result, 0, buffer.yield());
     }
     void plbuf_push(const bam1_t *bam) {
-        buffer.plbuf_push(bam);
+        buffer.plpbuf_push(bam);
     }
 };
 

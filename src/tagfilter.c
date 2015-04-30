@@ -139,7 +139,7 @@ int _tagfilter(const bam1_t * bam, C_TAGFILTER tagfilter, int irec)
             _typeunsupported_error(tagname, aux, val_as_string, irec);
             break;
         case 'd': /* REAL */
-            bamfd = bam_aux2d(aux);
+            bamfd = bam_aux2f(aux);
             snprintf(val_as_string, 51, "%f", bamfd);
             _typeunsupported_error(tagname, aux, val_as_string, irec);
             break;

@@ -2,6 +2,7 @@
 #define _BCFFILE_H_
 
 #include <Rdefines.h>
+#include "zlib.h"
 #include "vcf.h"
 
 /* io_bcf.c */

@@ -9,12 +9,12 @@
 class BamRangeIterator : public BamIterator {
 
     int32_t tid, beg, end;
-    bam_iter_t iter;
+    hts_itr_t *iter;
 
-    void iterate_inprogress(bamFile bfile) {
+    void iterate_inprogress(samFile *bfile) {
 	if (NULL == bam) {	// first record 
 	    bam = bam_init1();
-	    if (bam_iter_read(bfile, iter, bam) < 0) {
+	    if (sam_itr_next(bfile, iter, bam) < 0) {
 		iter_done = true;
 		return;
 	    }
@@ -22,14 +22,14 @@ class BamRangeIterator : public BamIterator {
 
 	do {
 	    process(bam);
-	    if (bam_iter_read(bfile, iter, bam) < 0)
+	    if (sam_itr_next(bfile, iter, bam) < 0)
 		iter_done = true;
 	} while (!iter_done);
         mate_touched_templates();
     }
 
-    void finalize_inprogress(bamFile bfile) {
-        int64_t pos = bam_tell(bfile);
+    void finalize_inprogress(samFile *bfile) {
+        int64_t pos = bgzf_tell(bfile->fp.bgzf);
         Templates::iterator it;
         // mate 'inprogress' segments for all templates
         for (it = templates.begin(); it != templates.end(); ++it)
@@ -41,21 +41,21 @@ class BamRangeIterator : public BamIterator {
                                                 it->first);
 
         BamIterator::finalize_inprogress(bfile);
-        bam_seek(bfile, pos, SEEK_SET);
+        bgzf_seek(bfile->fp.bgzf, pos, SEEK_SET);
     }
 
 public:
 
     // constructor / destructor
-    BamRangeIterator(bamFile bfile, const bam_index_t *bindex,
+    BamRangeIterator(samFile *bfile, const hts_idx_t *bindex,
                      int32_t tid, int32_t beg, int32_t end) :
         BamIterator(bfile, bindex), tid(tid), beg(beg), end(end)
     {
-	iter = bam_iter_query(bindex, tid, beg, end);
+	iter = bam_itr_queryi(bindex, tid, beg, end);
     }
 
     ~BamRangeIterator() {
-	bam_iter_destroy(iter);
+	sam_itr_destroy(iter);
    }
 };
 

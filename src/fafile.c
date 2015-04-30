@@ -3,13 +3,12 @@
 #include "XVector_interface.h"
 #include "fafile.h"
 #include "utilities.h"
-#include "razf.h"
 
 static SEXP FAFILE_TAG = NULL;
 
-static faidx_t *_fa_tryopen(const char *fname, const char *iname)
+static faidx_t *_fa_tryopen(const char *fname)
 {
-    return fai_load0(fname, iname);
+    return fai_load(fname);
 }
 
 static void _fa_close(faidx_t * fai)
@@ -41,19 +40,16 @@ SEXP fafile_init()
     return R_NilValue;
 }
 
-SEXP fafile_open(SEXP filename, SEXP indexname)
+SEXP fafile_open(SEXP filename)
 {
     if (!IS_CHARACTER(filename) || 1 != Rf_length(filename))
         Rf_error("'file' must be character(1)");
-    if (!IS_CHARACTER(indexname) || 1 != Rf_length(indexname))
-        Rf_error("'index' must be character(1)");
 
     _FA_FILE *ffile = Calloc(1, _FA_FILE);
     const char
-        *cfile = translateChar(STRING_ELT(filename, 0)),
-        *ifile = translateChar(STRING_ELT(indexname, 0));
+        *cfile = translateChar(STRING_ELT(filename, 0));
 
-    ffile->index = _fa_tryopen(cfile, ifile);
+    ffile->index = _fa_tryopen(cfile);
     if (NULL == ffile->index) {
         Free(ffile);
         Rf_error("'open' index failed");
@@ -105,7 +101,7 @@ SEXP n_fa(SEXP ext)
     faidx_t *fai = FAFILE(ext)->index;
     if (NULL == fai)
         Rf_error("'index' not available");
-    return ScalarInteger(faidx_fetch_nseq(fai));
+    return ScalarInteger(faidx_nseq(fai));
 }
 
 /*
@@ -162,9 +158,14 @@ SEXP scan_fa(SEXP ext, SEXP seq, SEXP start, SEXP end, SEXP type, SEXP lkup)
 
     for (int i = 0; i < n; ++i) {
         Chars_holder ans_elt_holder = get_elt_from_XRawList_holder(&ans_holder, i);
-        int len = faidx_fetch_seq2(fai, CHAR(STRING_ELT(seq, i)),
-                                   startp[i] - 1, endp[i] - 1,
-                                   (char *) ans_elt_holder.ptr);
+        /* int len = faidx_fetch_seq2(fai, CHAR(STRING_ELT(seq, i)), */
+        /*                            startp[i] - 1, endp[i] - 1, */
+        /*                            (char *) ans_elt_holder.ptr); */
+        int len = 0;
+        char *seqstr = faidx_fetch_seq(fai, CHAR(STRING_ELT(seq, i)),
+                                    startp[i] - 1, endp[i] - 1, &len);
+                                    
+        Rf_error("FIX ME: how to use the Char_holder interface?");
         if (len == -1)
             Rf_error(" record %d (%s:%d-%d) failed", i + 1,
                      (char *) CHAR(STRING_ELT(seq, i)), startp[i], endp[i]);
@@ -177,6 +178,7 @@ SEXP scan_fa(SEXP ext, SEXP seq, SEXP start, SEXP end, SEXP type, SEXP lkup)
             Rf_error(" record %d (%s:%d-%d) contains invalid DNA letters",
                      i + 1,
                      (char *) CHAR(STRING_ELT(seq, i)), startp[i], endp[i]);
+        free(seqstr);
     }
     UNPROTECT(2);
     return ans;

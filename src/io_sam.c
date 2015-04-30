@@ -1,5 +1,5 @@
-#include "samtools/khash.h"
-#include "samtools/sam.h"
+#include "khash.h"
+#include "sam.h"
 #include "bam_data.h"
 #include "scan_bam_data.h"
 #include "io_sam.h"
@@ -10,6 +10,20 @@
 #include "XVector_interface.h"
 #include "Biostrings_interface.h"
 #include "bam_mate_iter.h"
+
+int bam_fetch(samFile *in, const hts_idx_t *idx, int tid, int beg, int end,
+              void *data, bam_fetch_f func)
+{
+    int ret;
+    hts_itr_t *iter;
+    bam1_t *b = bam_init1();
+    iter = bam_itr_queryi(idx, tid, beg, end);
+    while((ret = bam_itr_next(in, iter, b)) >= 0)
+        func(b, data);
+    hts_itr_destroy(iter);
+    bam_destroy1(b);
+    return (ret == -1) ? 0 : ret;
+}
 
 /* from samtoools/bam_sort.c */
 void bam_sort_core(int is_by_qname, const char *fn, const char *prefix,
@@ -29,17 +43,18 @@ static const int N_TMPL_ELTS = sizeof(TMPL_ELT_NMS) / sizeof(const char *);
 
 void _check_is_bam(const char *filename)
 {
-    int magic_len;
-    char buf[4];
-    bamFile bfile = bam_open(filename, "r");
+    htsFile *bfile = hts_open(filename, "r");
 
     if (bfile == 0)
         Rf_error("failed to open SAM/BAM file\n  file: '%s'", filename);
 
-    magic_len = bam_read(bfile, buf, 4);
-    bam_close(bfile);
+    const htsFormat *format = hts_get_format(bfile);
+    if(format == NULL)
+        Rf_error("failed to read file format; is '%s' a SAM/BAM file?",
+                 filename);
+    hts_close(bfile);
 
-    if (magic_len != 4 || strncmp(buf, "BAM\001", 4) != 0)
+    if(format->format != bam)
         Rf_error("'filename' is not a BAM file\n  file: %s", filename);
 }
 
@@ -134,8 +149,8 @@ SEXP scan_bam_template(SEXP rname, SEXP tag)
 
 SEXP _read_bam_header(SEXP ext, SEXP what)
 {
-    samfile_t *sfile = BAMFILE(ext)->file;
-    bam_header_t *header = sfile->header;
+    samFile *sfile = BAMFILE(ext)->file;
+    bam_hdr_t *header = sam_hdr_read(sfile);
 
     SEXP ans = PROTECT(NEW_LIST(2));
     SEXP nms = NEW_CHARACTER(2);
@@ -157,7 +172,7 @@ SEXP _read_bam_header(SEXP ext, SEXP what)
 
     if (LOGICAL(what)[1] == TRUE) { /* 'text' */
         int n_text_elts = 0;
-        for (int i = 0; i < header->l_text; ++i)
+        for (unsigned int i = 0; i < header->l_text; ++i)
             if (header->text[i] == '\n')
                 n_text_elts += 1;
         SET_VECTOR_ELT(ans, 1, NEW_LIST(n_text_elts));
@@ -196,6 +211,7 @@ SEXP _read_bam_header(SEXP ext, SEXP what)
             }
         }
     }
+    bam_hdr_destroy(header);
 
     UNPROTECT(1);
     return ans;
@@ -205,7 +221,7 @@ SEXP _read_bam_header(SEXP ext, SEXP what)
 
 int check_qname(char *last_qname, int bufsize, bam1_t *bam, int max) 
 {
-    if (0 != strcmp(last_qname, bam1_qname(bam))) {
+    if (0 != strcmp(last_qname, bam_get_qname(bam))) {
         /* stop reading */
         if (max) {
             return -1;
@@ -216,7 +232,7 @@ int check_qname(char *last_qname, int bufsize, bam1_t *bam, int max)
                 bufsize = bam->core.l_qname;
                 last_qname = Calloc(bufsize, char);
             }
-            strcpy(last_qname, bam1_qname(bam));
+            strcpy(last_qname, bam_get_qname(bam));
             return 1;
         }
     /* same qname, continue reading */
@@ -231,8 +247,9 @@ int _samread(BAM_FILE bfile, BAM_DATA bd, const int yieldSize,
     int yield = 0, status = 1, bufsize = 1000;
     char *last_qname = Calloc(bufsize, char);
     bam1_t *bam = bam_init1();
+    bam_hdr_t *header = sam_hdr_read(bfile->file);
 
-    while (samread(bfile->file, bam) >= 0) {
+    while (sam_read1(bfile->file, header, bam) >= 0) {
         if (NA_INTEGER != yieldSize) {
             if (bd->obeyQname)
                 status = check_qname(last_qname, bufsize, bam, 
@@ -251,13 +268,14 @@ int _samread(BAM_FILE bfile, BAM_DATA bd, const int yieldSize,
 
         yield += status;
         if (NA_INTEGER != yieldSize && yield == yieldSize) { 
-            bfile->pos0 = bam_tell(bfile->file->x.bam);
+            bfile->pos0 = bgzf_tell(bfile->file->fp.bgzf);
             if (!bd->obeyQname) 
                 break;
         }
     }
 
     bam_destroy1(bam);
+    bam_hdr_destroy(header);
     Free(last_qname);
     return yield;
 }
@@ -268,7 +286,7 @@ int _samread_mate(BAM_FILE bfile, BAM_DATA bd, const int yieldSize,
     int yield = 0;
     bam_mates_t *bam_mates = bam_mates_new();
 
-    while (samread_mate(bfile->file->x.bam, bfile->index,
+    while (samread_mate(bfile->file, bfile->index,
                         &bfile->iter, bam_mates, bd) > 0) {
 
         if (NA_INTEGER != yieldSize && yield  >= yieldSize)
@@ -283,7 +301,7 @@ int _samread_mate(BAM_FILE bfile, BAM_DATA bd, const int yieldSize,
 
         yield += 1;
         if (NA_INTEGER != yieldSize && yield == yieldSize) { 
-            bfile->pos0 = bam_tell(bfile->file->x.bam);
+            bfile->pos0 = bgzf_tell(bfile->file->fp.bgzf);
             break;
         }
 
@@ -301,7 +319,7 @@ static int _scan_bam_all(BAM_DATA bd, bam_fetch_f parse1,
     const int yieldSize = bd->yieldSize;
     int yield = 0;
 
-    bam_seek(bfile->file->x.bam, bfile->pos0, SEEK_SET);
+    bgzf_seek(bfile->file->fp.bgzf, bfile->pos0, SEEK_SET);
     if (bd->asMates) {
         yield = _samread_mate(bfile, bd, yieldSize, parse1_mate);
     } else {
@@ -310,7 +328,7 @@ static int _scan_bam_all(BAM_DATA bd, bam_fetch_f parse1,
 
     /* end-of-file */
     if ((NA_INTEGER == yieldSize) || (yield < yieldSize))
-        bfile->pos0 = bam_tell(bfile->file->x.bam);
+        bfile->pos0 = bgzf_tell(bfile->file->fp.bgzf);
     if ((NULL != finish1) && (bd->iparsed >= 0))
         (*finish1) (bd);
 
@@ -324,28 +342,29 @@ static int _scan_bam_fetch(BAM_DATA bd, SEXP space, int *start, int *end,
 {
     int tid;
     BAM_FILE bfile = _bam_file_BAM_DATA(bd);
-    samfile_t *sfile = bfile->file;
-    bam_index_t *bindex = bfile->index;
+    samFile *sfile = bfile->file;
+    bam_hdr_t *hdr = sam_hdr_read(sfile);
+    hts_idx_t *bindex = bfile->index;
     const int initial = bd->iparsed;
 
     for (int irange = bfile->irange0; irange < LENGTH(space); ++irange) {
         const char *spc = translateChar(STRING_ELT(space, irange));
         const int starti =
             start[irange] > 0 ? start[irange] - 1 : start[irange];
-        for (tid = 0; tid < sfile->header->n_targets; ++tid) {
-            if (strcmp(spc, sfile->header->target_name[tid]) == 0)
+        for (tid = 0; tid < hdr->n_targets; ++tid) {
+            if (strcmp(spc, hdr->target_name[tid]) == 0)
                 break;
         }
-        if (tid == sfile->header->n_targets) {
+        if (tid == hdr->n_targets) {
             Rf_warning("space '%s' not in BAM header", spc);
             bd->irange += 1;
             return -1;
         }
         if (bd->asMates) {
-            bam_fetch_mate(sfile->x.bam, bindex, tid, starti, end[irange], 
+            bam_fetch_mate(sfile, bindex, tid, starti, end[irange], 
                            bd, parse1_mate);
         } else {
-            bam_fetch(sfile->x.bam, bindex, tid, starti, end[irange],
+            bam_fetch(sfile, bindex, tid, starti, end[irange],
                       bd, parse1);
         }
 
@@ -357,6 +376,7 @@ static int _scan_bam_fetch(BAM_DATA bd, SEXP space, int *start, int *end,
             break;
     }
     bfile->irange0 = bd->irange;
+    bam_hdr_destroy(hdr);
         
     return bd->iparsed - initial;
 }
@@ -405,7 +425,7 @@ static int _filter_and_parse1_mate(const bam_mates_t *mates, void *data)
     SCAN_BAM_DATA sbd = (SCAN_BAM_DATA) bd->extra;
     int yield = 0, pass = 0;
 
-    sbd->mates_flag = mates->mated == MATE_UNKNOWN ? NA_INTEGER : mates->mated;
+    sbd->mates_flag = mates->mated == MATE_UNKNOWN ? NA_INTEGER : (int) mates->mated;
     sbd->partition_id += 1;
 
     for (int i = 0; i < mates->n; ++i) {
@@ -439,9 +459,10 @@ SEXP _scan_bam_result_init(SEXP template_list, SEXP names, SEXP space,
        range2: tmpl1, tmpl2...
        ...
     */
-    bam_header_t *header = bfile->file->header;
+    bam_hdr_t *header = sam_hdr_read(bfile->file);
     SEXP rname = PROTECT(NEW_INTEGER(0));
     _as_factor(rname, (const char **) header->target_name, header->n_targets);
+    bam_hdr_destroy(header);
     
     for (int irange = 0; irange < nrange; ++irange) {
         SEXP tag = VECTOR_ELT(template_list, TAG_IDX);
@@ -576,7 +597,7 @@ static int _prefilter1_mate(const bam_mates_t *mates, void *data)
     int parsed;
 
     buf->partition_id += 1;
-    buf->mate_flag = mates->mated == MATE_UNKNOWN ? NA_INTEGER : mates->mated;
+    buf->mate_flag = mates->mated == MATE_UNKNOWN ? NA_INTEGER : (int) mates->mated;
     parsed = 0;
     for (int i = 0; i < mates->n; ++i)
         parsed += _prefilter1(mates->bams[i], data);
@@ -629,7 +650,8 @@ static int _filter1(const bam1_t * bam, void *data)
     bd->irec += 1;
     if (!_filter1_BAM_DATA(bam, bd))
         return 0;
-    samwrite((samfile_t *) bd->extra, bam);
+    Rf_error("FIX ME: is this right?");
+    bam_write1(((samFile *) bd->extra)->fp.bgzf, bam);
     bd->iparsed += 1;
     return 1;
 }
@@ -643,9 +665,9 @@ _filter_bam(SEXP bfile, SEXP space, SEXP keepFlags,
         _init_BAM_DATA(bfile, space, keepFlags, isSimpleCigar, tagFilter, 0,
                        NA_INTEGER, 0, 0, '\0', '\0', NULL);
     /* FIXME: this just copies the header... */
-    bam_header_t *header = BAMFILE(bfile)->file->header;
-    samfile_t *f_out = _bam_tryopen(translateChar(STRING_ELT(fout_name, 0)),
-                                    CHAR(STRING_ELT(fout_mode, 0)), header);
+    bam_hdr_t *header = sam_hdr_read(BAMFILE(bfile)->file);
+    samFile *f_out = _bam_tryopen(translateChar(STRING_ELT(fout_name, 0)),
+                                    CHAR(STRING_ELT(fout_mode, 0)));
     bd->extra = f_out;
 
     int status = _do_scan_bam(bd, space, _filter1, NULL, NULL);
@@ -653,7 +675,7 @@ _filter_bam(SEXP bfile, SEXP space, SEXP keepFlags,
         int idx = bd->irec;
         int parse_status = bd->parse_status;
         _Free_BAM_DATA(bd);
-        samclose(f_out);
+        sam_close(f_out);
         Rf_error("'filterBam' failed:\n  record: %d\n  error: %d",
                  idx, parse_status);
     }
@@ -661,7 +683,8 @@ _filter_bam(SEXP bfile, SEXP space, SEXP keepFlags,
     /* sort and index destintation ? */
     /* cleanup */
     _Free_BAM_DATA(bd);
-    samclose(f_out);
+    bam_hdr_destroy(header);
+    sam_close(f_out);
 
     return status < 0 ? R_NilValue : fout_name;
 }
@@ -763,7 +786,7 @@ SEXP index_bam(SEXP indexname)
     const char *fbam = translateChar(STRING_ELT(indexname, 0));
 
     _check_is_bam(fbam);
-    int status = bam_index_build(fbam);
+    int status = bam_index_build(fbam, 0);
 
     if (0 != status)
         Rf_error("failed to build index\n  file: %s", fbam);

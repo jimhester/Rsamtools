@@ -2,7 +2,7 @@
 #define FAFILE_H
 
 #include <Rdefines.h>
-#include "samtools/faidx.h"
+#include "faidx.h"
 
 typedef struct {
     faidx_t *index;
@@ -11,7 +11,7 @@ typedef struct {
 #define FAFILE(f) ((_FA_FILE *) R_ExternalPtrAddr(f))
 
 SEXP fafile_init();
-SEXP fafile_open(SEXP filename, SEXP indexname);
+SEXP fafile_open(SEXP filename);
 SEXP fafile_close(SEXP ext);
 /* SEXP fafile_reopen(SEXP ext, SEXP filename, SEXP indexname); */
 SEXP fafile_isopen(SEXP ext);

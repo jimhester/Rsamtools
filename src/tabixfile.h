@@ -3,15 +3,18 @@
 
 #include <Rdefines.h>
 #include "tbx.h"
+#include "bgzf.h"
+#include "kstring.h"
 
 typedef struct {
     tbx_t *tabix;
-    hts_itr_t iter;
+    hts_itr_t *iter;
+    htsFile *fp;
 } _TABIX_FILE;
 
 #define TABIXFILE(b) ((_TABIX_FILE *) R_ExternalPtrAddr(b))
 
-typedef SEXP SCAN_FUN(tbx_t *tabix, hts_itr_t iter, const int size,
+typedef SEXP SCAN_FUN(htsFile *fp, tbx_t *tabix, hts_itr_t *iter, const int size,
                       SEXP state, SEXP rownames);
 
 SCAN_FUN tabix_as_character;

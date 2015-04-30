@@ -8,6 +8,10 @@
 extern "C" {
 #endif
 
+typedef int (*bam_fetch_f)(const bam1_t *b, void *data);
+int bam_fetch(samFile *sf, const hts_idx_t *idx, int tid, int beg, int end,
+              void *data, bam_fetch_f func);
+
 SEXP scan_bam_template(SEXP rname, SEXP tags);
 SEXP sort_bam(SEXP fname, SEXP destinationPrefix, SEXP isByQname,
               SEXP maxMemory);
