@@ -11,20 +11,6 @@
 #include "Biostrings_interface.h"
 #include "bam_mate_iter.h"
 
-int bam_fetch(samFile *in, const hts_idx_t *idx, int tid, int beg, int end,
-              void *data, bam_fetch_f func)
-{
-    int ret;
-    hts_itr_t *iter;
-    bam1_t *b = bam_init1();
-    iter = bam_itr_queryi(idx, tid, beg, end);
-    while((ret = bam_itr_next(in, iter, b)) >= 0)
-        func(b, data);
-    hts_itr_destroy(iter);
-    bam_destroy1(b);
-    return (ret == -1) ? 0 : ret;
-}
-
 /* from samtoools/bam_sort.c */
 void bam_sort_core(int is_by_qname, const char *fn, const char *prefix,
                    size_t max_mem);

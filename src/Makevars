@@ -5,13 +5,7 @@ RHTSLIB_LIBS=`echo 'Rhtslib::pkgconfig("PKG_LIBS")'|\
     "${R_HOME}/bin/R" --vanilla --slave`
 PKG_LIBS = ${PKG_LIBS0} -lz $(RHTSLIB_LIBS)
 
-libs0: libbam.a libbcf.a libtabix.a
+libs0: libbam.a
 
 libbam.a: $(BAMOBJ)
 	$(AR) -crus $@ $(BAMOBJ)
-
-libbcf.a: $(BCFOBJ)
-	$(AR) -crus $@ $(BCFOBJ)
-
-libtabix.a: $(TABIXOBJ)
-	$(AR) -crus $@ $(TABIXOBJ)

@@ -1,17 +1,18 @@
 PATCH_O = samtools_patch.o
-KNETFILE_O = knetfile.o
+
+# First group of object files from LOBJS var in samtools Makefile;
+# second group from AOBJS; bam_tview* have been removed
 BAMOBJ_0 = \
-  bgzf.o kstring.o bam_aux.o bam.o bam_import.o sam.o bam_index.o	\
-  bam_pileup.o bam_lpileup.o bam_md.o razf.o faidx.o \
-  $(KNETFILE_O) bam_sort.o sam_header.o bam_reheader.o kprobaln.o
-BCFOBJ_0 = \
-  bcf.o vcf.o bcfutils.o prob1.o index.o fet.o \
-  bcf2qcall.o
+  \
+  bam_aux.o bam.o bam_import.o sam.o sam_header.o bam_plbuf.o \
+  \
+  bam_index.o bam_plcmd.o sam_view.o \
+  bam_cat.o bam_md.o bam_reheader.o bam_sort.o bedidx.o kprobaln.o \
+  bam_rmdup.o bam_rmdupse.o bam_mate.o bam_stat.o bam_color.o \
+  kaln.o bam2bcf.o bam2bcf_indel.o errmod.o sample.o \
+  padding.o bam_lpileup.o
+
 BAMOBJ=$(BAMOBJ_0:%=samtools/%) $(PATCH_O)
-BCFOBJ=$(BCFOBJ_0:%=samtools/bcftools/%) $(PATCH_O)
-TABIXOBJ = \
-  samtools/bgzf.o samtools/kstring.o samtools/knetfile.o \
-  tabix/index.o tabix/bedidx.o $(PATCH_O)
 
 DFLAGS = -D_USE_KNETFILE -D_FILE_OFFSET_BITS=64 \
   -U_FORTIFY_SOURCE -DBGZF_CACHE \
@@ -24,7 +25,8 @@ PKG_CFLAGS0 = \
   $(DFLAGS)
 
 PKG_LIBS0 = -pthread \
-  $(SHLIB_OPENMP_CFLAGS)
+  $(SHLIB_OPENMP_CFLAGS) \
+  "${R_PACKAGE_DIR}/usrlib${R_ARCH}/libbam.a"
 
 .PHONY: all libs clean
 
@@ -33,15 +35,10 @@ all: $(SHLIB)
 $(SHLIB): libs
 
 libs: libs0
-	mkdir -p "${R_PACKAGE_DIR}/include/samtools/bcftools"
-	mkdir -p "${R_PACKAGE_DIR}/include/tabix"
+	mkdir -p "${R_PACKAGE_DIR}/include/samtools/"
 	cp samtools/*.h "${R_PACKAGE_DIR}/include/samtools/"
-	cp samtools/bcftools/*h "${R_PACKAGE_DIR}/include/samtools/bcftools/"
-	cp tabix/*h "${R_PACKAGE_DIR}/include/tabix/"
-	cp samtools/bgzf.h samtools/kstring.h samtools/knetfile.h \
-		"${R_PACKAGE_DIR}/include/tabix/"
 	mkdir -p "${R_PACKAGE_DIR}/usrlib${R_ARCH}"
-	cp libbam.a libbcf.a libtabix.a "${R_PACKAGE_DIR}/usrlib${R_ARCH}"
+	cp libbam.a "${R_PACKAGE_DIR}/usrlib${R_ARCH}"
 
 clean:
 	rm -f $(BAMOBJ) $(BCFOBJ) $(TABIXOBJ) *.a *.o *.so *.dll
