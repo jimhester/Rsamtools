@@ -28,17 +28,19 @@ PKG_LIBS0 = -pthread \
   $(SHLIB_OPENMP_CFLAGS) \
   "${R_PACKAGE_DIR}/usrlib${R_ARCH}/libbam.a"
 
-.PHONY: all libs clean
+.PHONY: all libs libs0 clean destdirs addl_destdirs
 
 all: $(SHLIB)
 
 $(SHLIB): libs
 
 libs: libs0
-	mkdir -p "${R_PACKAGE_DIR}/include/samtools/"
 	cp samtools/*.h "${R_PACKAGE_DIR}/include/samtools/"
-	mkdir -p "${R_PACKAGE_DIR}/usrlib${R_ARCH}"
 	cp libbam.a "${R_PACKAGE_DIR}/usrlib${R_ARCH}"
 
+destdirs: addl_destdirs
+	mkdir -p "${R_PACKAGE_DIR}/include/samtools/"
+	mkdir -p "${R_PACKAGE_DIR}/usrlib${R_ARCH}"
+
 clean:
-	rm -f $(BAMOBJ) $(BCFOBJ) $(TABIXOBJ) *.a *.o *.so *.dll
+	rm -f $(BAMOBJ) *.a *.o *.so *.dll

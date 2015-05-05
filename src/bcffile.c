@@ -2,6 +2,7 @@
 #include <errno.h>
 #include "kstring.h"
 #include "bgzf.h"
+#include "samtools_patch.h"
 #include "vcf.h"
 #include "bcffile.h"
 #include "utilities.h"

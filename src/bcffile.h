@@ -3,6 +3,7 @@
 
 #include <Rdefines.h>
 #include "zlib.h"
+#include "samtools_patch.h"
 #include "vcf.h"
 
 /* io_bcf.c */

@@ -5,7 +5,10 @@ RHTSLIB_LIBS=`echo 'Rhtslib::pkgconfig("PKG_LIBS")'|\
     "${R_HOME}/bin/R" --vanilla --slave`
 PKG_LIBS = ${PKG_LIBS0} -lz $(RHTSLIB_LIBS)
 
-libs0: libbam.a
+libs0: libbam.a destdirs
+
+# empty because no add'l destination directories need on non-Windows
+addl_destdirs: ;
 
 libbam.a: $(BAMOBJ)
 	$(AR) -crus $@ $(BAMOBJ)
