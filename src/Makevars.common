@@ -43,4 +43,7 @@ destdirs: addl_destdirs
 	mkdir -p "${R_PACKAGE_DIR}/usrlib${R_ARCH}"
 
 clean:
+	@echo "cleaning..."
 	rm -f $(BAMOBJ) *.a *.o *.so *.dll
+
+shlib-clean: clean
