@@ -21,6 +21,7 @@ Suggests: GenomicAlignments, ShortRead (>= 1.19.10), GenomicFeatures,
         TxDb.Dmelanogaster.UCSC.dm3.ensGene, KEGG.db,
         TxDb.Hsapiens.UCSC.hg18.knownGene, RNAseqData.HNRNPC.bam.chr14,
         BSgenome.Hsapiens.UCSC.hg19, pasillaBamSubset, RUnit, BiocStyle
-LinkingTo: S4Vectors, IRanges, XVector, Biostrings, Rhtslib (>= 0.99.22), zlibbioc
+LinkingTo: S4Vectors, IRanges, XVector, Biostrings, Rhtslib (>= 1.1.7),
+          zlibbioc
 biocViews: DataImport,  Sequencing, Coverage, Alignment, QualityControl
 Video: https://www.youtube.com/watch?v=Rfon-DQYbWA&list=UUqaMSQd_h-2EDGsU6WDiX0Q
