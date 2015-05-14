@@ -188,40 +188,6 @@ static int _bcf_ans_grow(SEXP ans, R_len_t sz, int n_smpl)
     return n;
 }
 
-/* static int _bcf_sync1(bcf1_t * b) */
-/* { */
-/*     /\* called when no FORMAT / GENO fields present; */
-/*        from bcftools/bcf.c:bcf_sync *\/ */
-/*     char *p, *tmp[5]; */
-/*     int n; */
-/*     for (p = b->str, n = 0; p < b->str + b->l_str; ++p) { */
-/*         if (*p == 0 && p + 1 != b->str + b->l_str) { */
-/*             if (n == 5) { */
-/*                 ++n; */
-/*                 break; */
-/*             } else */
-/*                 tmp[n++] = p + 1; */
-/*         } */
-/*     } */
-/*     if (n != 4) */
-/*         return -1; */
-/*     b->ref = tmp[0]; */
-/*     b->alt = tmp[1]; */
-/*     b->flt = tmp[2]; */
-/*     b->info = tmp[3]; */
-/*     b->fmt = 0; */
-/*     if (*b->alt == 0) */
-/*         b->n_alleles = 1; */
-/*     else { */
-/*         for (p = b->alt, n = 1; *p; ++p) */
-/*             if (*p == ',') */
-/*                 ++n; */
-/*         b->n_alleles = n + 1; */
-/*     } */
-/*     b->n_gi = 0; */
-/*     return 0; */
-/* } */
-
 /* NOTE: in bcf2 format / geno fields are encoded as vectors of values
  * by field across samples rather than by sample (e.g., GT:0/0, GQ:48)
  * so that, for example, GT field across all samples in the bcf1_t
@@ -342,7 +308,7 @@ SEXP scan_bcf_header(SEXP ext)
         char *txt = (char *) R_alloc(hdrlen+1, sizeof(char));
         strncpy(txt, hdr_text, hdrlen+1);
         s = strtok(txt, "\n");
-        for (i = 0; i < hdrlen; ++i) {
+        for (i = 0; i < hdr->nhrec; ++i) {
             SET_STRING_ELT(x, i, mkChar(s));
             s = strtok(NULL, "\n");
         }
@@ -353,6 +319,7 @@ SEXP scan_bcf_header(SEXP ext)
     for (i = 0; i < BCF_HDR_LAST; ++i)
         SET_STRING_ELT(nm, i, mkChar(BCF_HDR_NM[i]));
 
+    free(seqnames);
     free(hdr_text);
     bcf_hdr_destroy(hdr);
     UNPROTECT(1);
@@ -362,21 +329,19 @@ SEXP scan_bcf_header(SEXP ext)
 int scan_bcf_range(vcfFile * bcf, bcf_hdr_t * hdr, SEXP ans, int tid, int start,
                    int end, int n)
 {
-    const int TID_BUFSZ = 8;
-    static char *buf = NULL;
     bcf1_t *bcf1 = bcf_init1();
     if (NULL == bcf1)
         Rf_error("scan_bcf_region: failed to allocate memory");
     int sz = Rf_length(VECTOR_ELT(ans, BCF_TID));
     int res;
-    if (NULL == buf)
-        buf = Calloc(TID_BUFSZ, char);	/* leaks, but oh well */
-    int nseqs = 0;
-    const char **seqnames = bcf_hdr_seqnames(hdr, &nseqs);
-    if(nseqs < 1)
-        Rf_error("header contains no seqname info");
+
+    kstring_t formatted_line = { 0, 0, NULL };
     while (0 <= (res = bcf_read(bcf, hdr, bcf1))) {
-        bcf_unpack(bcf1, BCF_UN_ALL);
+        formatted_line.l = 0; /* zero the length of the line */
+        vcf_format1(hdr, bcf1, &formatted_line); /* bcf_unpack side-effect */
+        if(formatted_line.l < 1)
+            Rf_error("Error formatting vcf/bcf record number %d", n);
+
         if (tid >= 0) {
             /* Finding relative position based on length of ref allele */
             int pos = bcf1->rlen;
@@ -392,29 +357,51 @@ int scan_bcf_range(vcfFile * bcf, bcf_hdr_t * hdr, SEXP ans, int tid, int start,
             bcf_destroy(bcf1);
             Rf_error("bcf_scan: failed to increase size; out of memory?");
         }
-        if (nseqs > 0)
-            SET_STRING_ELT(VECTOR_ELT(ans, BCF_TID), n,
-                           smkChar(seqnames[bcf1->rid]));
-        else {
-            snprintf(buf, TID_BUFSZ, "%d", bcf1->rid);
-            SET_STRING_ELT(VECTOR_ELT(ans, BCF_TID), n, smkChar(buf));
-        }
 
+        ks_tokaux_t ksaux;
+        char* colstring = kstrtok(formatted_line.s, "\t", &ksaux);
+
+        /* filling in fields */
+
+        /* CHROM */
+        SET_STRING_ELT(VECTOR_ELT(ans, BCF_TID), n,
+                       mkCharLen(colstring, ksaux.p - colstring));
+        /* POS */
+        colstring = kstrtok(0, 0, &ksaux);
         INTEGER(VECTOR_ELT(ans, BCF_POS))[n] = bcf1->pos + 1;
+        /* ID */
+        colstring = kstrtok(0, 0, &ksaux);
+        SET_STRING_ELT(VECTOR_ELT(ans, BCF_ID), n, 
+                       mkCharLen(colstring, ksaux.p - colstring));
+        /* REF */
+        colstring = kstrtok(0, 0, &ksaux);
+        SET_STRING_ELT(VECTOR_ELT(ans, BCF_REF), n,
+                       mkCharLen(colstring, ksaux.p - colstring));
+        /* ALT */
+        colstring = kstrtok(0, 0, &ksaux);
+        SET_STRING_ELT(VECTOR_ELT(ans, BCF_ALT), n,
+                       mkCharLen(colstring, ksaux.p - colstring));
+        /* QUAL */
+        colstring = kstrtok(0, 0, &ksaux);
         REAL(VECTOR_ELT(ans, BCF_QUAL))[n] = bcf1->qual;
-        SET_STRING_ELT(VECTOR_ELT(ans, BCF_ID), n, smkChar(bcf1->d.id));
-        SET_STRING_ELT(VECTOR_ELT(ans, BCF_REF), n, smkChar(bcf1->d.allele[0]));
-        /* FIX ME: get all alleles, not just the first alt */
-        SET_STRING_ELT(VECTOR_ELT(ans, BCF_ALT), n, smkChar(bcf1->d.allele[1]));
-        /* FIX ME: placeholder to get all flt values */
-        SET_STRING_ELT(VECTOR_ELT(ans, BCF_FLT), n, smkChar(bcf_hdr_int2id(hdr, BCF_DT_ID, bcf1->d.flt[0])));
-        /* FIX ME: placeholder to get all info values */
-        SET_STRING_ELT(VECTOR_ELT(ans, BCF_INFO), n, smkChar(bcf_hdr_int2id(hdr, BCF_DT_ID, bcf1->d.info[0].key)));
-        SET_STRING_ELT(VECTOR_ELT(ans, BCF_FMT), n, smkChar(bcf_hdr_int2id(hdr, BCF_DT_ID, bcf1->d.fmt[0].id)));
+        /* FILTER */
+        colstring = kstrtok(0, 0, &ksaux);
+        SET_STRING_ELT(VECTOR_ELT(ans, BCF_FLT), n,
+                       mkCharLen(colstring, ksaux.p - colstring));
+        /* INFO */
+        colstring = kstrtok(0, 0, &ksaux);
+        SET_STRING_ELT(VECTOR_ELT(ans, BCF_INFO), n,
+                       mkCharLen(colstring, ksaux.p - colstring));
+        /* FORMAT */
+        colstring = kstrtok(0, 0, &ksaux);
+        SET_STRING_ELT(VECTOR_ELT(ans, BCF_FMT), n,
+                       mkCharLen(colstring, ksaux.p - colstring));
+                       
         _bcf_gi2sxp(VECTOR_ELT(ans, BCF_GENO), n, hdr, bcf1);
         ++n;
+
     }
-    free(seqnames);
+    free(formatted_line.s);
     bcf_destroy(bcf1);
     return n;
 }
@@ -427,7 +414,7 @@ SEXP scan_bcf(SEXP ext, SEXP space, SEXP tmpl)
     hts_idx_t *idx = BCFFILE(ext)->index;
     if (bcf->format.format != vcf && 0 != bgzf_seek(bcf->fp.bgzf, 0, SEEK_SET))
         Rf_error("internal: failed to 'seek' on bcf file");
-    bcf_hdr_t *hdr = vcf_hdr_read(bcf);
+    bcf_hdr_t *hdr = bcf_hdr_read(bcf);
     if (NULL == hdr)
         Rf_error("no 'header' line \"#CHROM POS ID...\"?");
 
@@ -466,7 +453,8 @@ SEXP scan_bcf(SEXP ext, SEXP space, SEXP tmpl)
         }
     }
     _bcf_ans_grow(tmpl, -1 * n, bcf_hdr_nsamples(hdr));
-
+    
+    bcf_hdr_destroy(hdr);
     UNPROTECT(1);
     return tmpl;
 }
