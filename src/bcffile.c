@@ -212,7 +212,7 @@ static void _bcf_gi2sxp(SEXP geno, const int i_rec, const bcf_hdr_t * h,
 
     /* from bcftools/bcf.c */
     for (int i = 0; i < b->n_fmt; ++i) {
-        const int off = i_rec * bcf_hdr_nsamples(h);
+        const int off = i_rec * b->n_sample;
         SEXP g;
         int t;
 
@@ -226,44 +226,49 @@ static void _bcf_gi2sxp(SEXP geno, const int i_rec, const bcf_hdr_t * h,
         g = VECTOR_ELT(geno, t);
 
         if (b->d.fmt[i].id == bcf_hdr_id2int(h, BCF_DT_ID, "PL")) {
-            const int x = b->n_allele * (b->n_allele + 1) / 2;
-            SEXP pl = Rf_allocMatrix(INTSXP, x, bcf_hdr_nsamples(h));
-            SET_VECTOR_ELT(g, off, pl);	/* protect */
+            const int vals_per_smpl = b->d.fmt[i].n;
+            SEXP pl = Rf_allocMatrix(INTSXP, vals_per_smpl, b->n_sample);
+            SET_VECTOR_ELT(g, i_rec, pl); /* protect */
             if((nvals = bcf_get_format_int32(h, b, "PL", &intdest, &fieldmemsz)) < 0)
                Rf_error("internal: problem reading PL fmt field");
-            for (int smplnum = 0; smplnum < bcf_hdr_nsamples(h); ++smplnum) {
-                for (int k = 0; k < x; ++k)
-                    INTEGER(pl)[smplnum * x + k] = intdest[smplnum * x + k];
+            for (int smplnum = 0; smplnum < b->n_sample; ++smplnum) {
+                for (int k = 0; k < vals_per_smpl; ++k)
+                    INTEGER(pl)[smplnum * vals_per_smpl + k]
+                        = intdest[smplnum * vals_per_smpl + k];
             }
         } else if (b->d.fmt[i].id == bcf_hdr_id2int(h, BCF_DT_ID, "DP")) {
             int *dp = INTEGER(g) + off;
             if((nvals = bcf_get_format_int32(h, b, "DP", &intdest, &fieldmemsz)) < 0)
                 Rf_error("internal: problem reading DP fmt field");
-            for (int smplnum = 0; smplnum < bcf_hdr_nsamples(h); ++smplnum)
+            for (int smplnum = 0; smplnum < b->n_sample; ++smplnum)
                 *dp++ = intdest[smplnum];
         } else if (b->d.fmt[i].id == bcf_hdr_id2int(h, BCF_DT_ID, "GQ") ||
                    b->d.fmt[i].id == bcf_hdr_id2int(h, BCF_DT_ID, "SP")) {
             int *gq = INTEGER(g) + off;
             if((nvals = bcf_get_format_int32(h, b, "DP", &intdest, &fieldmemsz)) < 0)
                 Rf_error("internal: problem reading GQ or SP fmt field");
-            for (int smplnum = 0; smplnum < bcf_hdr_nsamples(h); ++smplnum)
+            for (int smplnum = 0; smplnum < b->n_sample; ++smplnum)
                 *gq++ = intdest[smplnum];
         } else if (b->d.fmt[i].id == bcf_hdr_id2int(h, BCF_DT_ID, "GT")) {
-            if((nvals = bcf_get_genotypes(h, b, &strdest, &fieldmemsz)) < 0)
-                Rf_error("internal: problem reading GT field");
+            kstring_t gt_str = { 0, 0, NULL };
+            bcf_fmt_t *f = b->d.fmt;
             int idx = off;
-            for(int smplnum = 0; smplnum < bcf_hdr_nsamples(h); ++smplnum) {
-                SET_STRING_ELT(g, idx++, mkChar(strdest[smplnum]));
+            for(int smplnum = 0; smplnum < b->n_sample; ++smplnum) {
+                bcf_format_gt(&f[i], smplnum, &gt_str);
+                SET_STRING_ELT(g, idx++, mkChar(gt_str.s));
+                gt_str.l = 0;
             }
+            free(gt_str.s);
         } else if (b->d.fmt[i].id == bcf_hdr_id2int(h, BCF_DT_ID, "GL")) {
-            const int x = b->n_allele * (b->n_allele + 1) / 2;
-            SEXP gl = Rf_allocMatrix(REALSXP, x, bcf_hdr_nsamples(h));
-            SET_VECTOR_ELT(g, off, gl);	/* protect */
-            if((nvals = bcf_get_format_int32(h, b, "GL", &floatdest, &fieldmemsz)) < 0)
-                Rf_error("intenal: problem reading GL field");
-            for (int smplnum = 0; smplnum < bcf_hdr_nsamples(h); ++smplnum) {
-                for (int k = 0; k < x; ++k)
-                    REAL(gl)[smplnum * x + k] = floatdest[smplnum * x + k];
+            const int vals_per_smpl = b->d.fmt[i].n;
+            SEXP gl = Rf_allocMatrix(REALSXP, vals_per_smpl, b->n_sample);
+            SET_VECTOR_ELT(g, i_rec, gl); /* protect */
+            if((nvals = bcf_get_format_float(h, b, "GL", &floatdest, &fieldmemsz)) < 0)
+                Rf_error("internal: problem reading GL field");
+            for (int smplnum = 0; smplnum < b->n_sample; ++smplnum) {
+                for (int k = 0; k < vals_per_smpl; ++k)
+                    REAL(gl)[smplnum * vals_per_smpl + k]
+                        = floatdest[smplnum * vals_per_smpl + k];
             }
         }
     }
@@ -326,8 +331,8 @@ SEXP scan_bcf_header(SEXP ext)
     return ans;
 }
 
-int scan_bcf_range(vcfFile * bcf, bcf_hdr_t * hdr, SEXP ans, int tid, int start,
-                   int end, int n)
+int scan_bcf_range(vcfFile * bcf, bcf_hdr_t * hdr, SEXP ans,
+                   hts_itr_t *iter, int n)
 {
     bcf1_t *bcf1 = bcf_init1();
     if (NULL == bcf1)
@@ -336,21 +341,16 @@ int scan_bcf_range(vcfFile * bcf, bcf_hdr_t * hdr, SEXP ans, int tid, int start,
     int res;
 
     kstring_t formatted_line = { 0, 0, NULL };
-    while (0 <= (res = bcf_read(bcf, hdr, bcf1))) {
+    while (0 <= (res = bcf_itr_next(bcf, iter, bcf1))) {
         formatted_line.l = 0; /* zero the length of the line */
-        vcf_format1(hdr, bcf1, &formatted_line); /* bcf_unpack side-effect */
+
+        /* vcf_format has bcf_unpack side-effect */
+        /* Last argument (omit_sample_cols) prevents vcf_format
+         * appending all the sample column data to the kstring */
+        vcf_format(hdr, bcf1, &formatted_line, 1);
         if(formatted_line.l < 1)
             Rf_error("Error formatting vcf/bcf record number %d", n);
 
-        if (tid >= 0) {
-            /* Finding relative position based on length of ref allele */
-            int pos = bcf1->rlen;
-            pos = bcf1->pos + (pos > 0 ? pos : 1);
-            if (bcf1->rid != tid || bcf1->pos > end)
-                break;
-            if (!(pos >= start && end > bcf1->pos))
-                continue;
-        }
         if (n >= sz)
             sz = _bcf_ans_grow(ans, BCF_BUFSIZE_GROW, bcf_hdr_nsamples(hdr));
         if (n >= sz) {
@@ -359,41 +359,46 @@ int scan_bcf_range(vcfFile * bcf, bcf_hdr_t * hdr, SEXP ans, int tid, int start,
         }
 
         ks_tokaux_t ksaux;
+        /* avoid uninitialized values in aux.tab */
+        memset(&ksaux, 0, sizeof(ks_tokaux_t));
         char* colstring = kstrtok(formatted_line.s, "\t", &ksaux);
 
         /* filling in fields */
+        /* For those fields that don't actually use the string version
+         * we still need to advance the tokenizer */
 
         /* CHROM */
         SET_STRING_ELT(VECTOR_ELT(ans, BCF_TID), n,
                        mkCharLen(colstring, ksaux.p - colstring));
         /* POS */
-        colstring = kstrtok(0, 0, &ksaux);
+        colstring = kstrtok(NULL, NULL, &ksaux);
         INTEGER(VECTOR_ELT(ans, BCF_POS))[n] = bcf1->pos + 1;
         /* ID */
-        colstring = kstrtok(0, 0, &ksaux);
+        colstring = kstrtok(NULL, NULL, &ksaux);
         SET_STRING_ELT(VECTOR_ELT(ans, BCF_ID), n, 
                        mkCharLen(colstring, ksaux.p - colstring));
         /* REF */
-        colstring = kstrtok(0, 0, &ksaux);
+        colstring = kstrtok(NULL, NULL, &ksaux);
         SET_STRING_ELT(VECTOR_ELT(ans, BCF_REF), n,
                        mkCharLen(colstring, ksaux.p - colstring));
         /* ALT */
-        colstring = kstrtok(0, 0, &ksaux);
+        colstring = kstrtok(NULL, NULL, &ksaux);
         SET_STRING_ELT(VECTOR_ELT(ans, BCF_ALT), n,
                        mkCharLen(colstring, ksaux.p - colstring));
         /* QUAL */
-        colstring = kstrtok(0, 0, &ksaux);
+        colstring = kstrtok(NULL, NULL, &ksaux);
         REAL(VECTOR_ELT(ans, BCF_QUAL))[n] = bcf1->qual;
         /* FILTER */
-        colstring = kstrtok(0, 0, &ksaux);
+        colstring = kstrtok(NULL, NULL, &ksaux);
         SET_STRING_ELT(VECTOR_ELT(ans, BCF_FLT), n,
                        mkCharLen(colstring, ksaux.p - colstring));
         /* INFO */
-        colstring = kstrtok(0, 0, &ksaux);
+        colstring = kstrtok(NULL, NULL, &ksaux);
         SET_STRING_ELT(VECTOR_ELT(ans, BCF_INFO), n,
                        mkCharLen(colstring, ksaux.p - colstring));
         /* FORMAT */
-        colstring = kstrtok(0, 0, &ksaux);
+        /* formatted_line ends with '\n' */
+        colstring = kstrtok(NULL, "\n", &ksaux);
         SET_STRING_ELT(VECTOR_ELT(ans, BCF_FMT), n,
                        mkCharLen(colstring, ksaux.p - colstring));
                        
@@ -423,7 +428,11 @@ SEXP scan_bcf(SEXP ext, SEXP space, SEXP tmpl)
 
     if (R_NilValue == space) {
         SET_VECTOR_ELT(tmpl, BCF_RECS_PER_RANGE, NEW_INTEGER(1));
-        n = scan_bcf_range(bcf, hdr, tmpl, -1, -1, -1, n);
+        /* HTS_IDX_START signals the iterator to read the entire file
+         * (i.e., don't care about ranges) */
+        hts_itr_t *iter = bcf_itr_queryi(idx, HTS_IDX_START, -1, -1);
+        n = scan_bcf_range(bcf, hdr, tmpl, iter, n);
+        bcf_itr_destroy(iter);
         INTEGER(VECTOR_ELT(tmpl, BCF_RECS_PER_RANGE))[0] = n;
     } else {
         SEXP spc = VECTOR_ELT(space, 0);
@@ -433,19 +442,15 @@ SEXP scan_bcf(SEXP ext, SEXP space, SEXP tmpl)
         SEXP nrec = NEW_INTEGER(nspc);
         SET_VECTOR_ELT(tmpl, BCF_RECS_PER_RANGE, nrec);
 
+        hts_itr_t *iter = NULL;
         for (int i = 0; i < nspc; ++i) {
             int tid = bcf_hdr_name2id(hdr, CHAR(STRING_ELT(spc, i)));
             if (tid < 0) {
                 Rf_error("'space' not in file: %s", CHAR(STRING_ELT(spc, i)));
             }
-            hts_itr_t *iter = bcf_itr_queryi(idx, tid, start[i], end[i]);
-            uint64_t off = (iter != NULL ? iter->curr_off : 0);
-            if (off == 0) {
-                INTEGER(nrec)[i] = 0;
-                continue;
-            }
-            bgzf_seek(bcf->fp.bgzf, off, SEEK_SET);
-            n = scan_bcf_range(bcf, hdr, tmpl, tid, start[i], end[i], n);
+            iter = bcf_itr_queryi(idx, tid, start[i], end[i]);
+            n = scan_bcf_range(bcf, hdr, tmpl, iter, n);
+            bcf_itr_destroy(iter);
             if (i == 0)
                 INTEGER(nrec)[i] = n;
             else
