@@ -165,7 +165,6 @@ SEXP scan_fa(SEXP ext, SEXP seq, SEXP start, SEXP end, SEXP type, SEXP lkup)
         char *seqstr = faidx_fetch_seq(fai, CHAR(STRING_ELT(seq, i)),
                                     startp[i] - 1, endp[i] - 1, &len);
                                     
-        Rf_error("FIX ME: how to use the Char_holder interface?");
         if (len == -1)
             Rf_error(" record %d (%s:%d-%d) failed", i + 1,
                      (char *) CHAR(STRING_ELT(seq, i)), startp[i], endp[i]);
@@ -173,6 +172,7 @@ SEXP scan_fa(SEXP ext, SEXP seq, SEXP start, SEXP end, SEXP type, SEXP lkup)
         if (len < widthp[i])
             Rf_error(" record %d (%s:%d-%d) was truncated", i + 1,
                      (char *) CHAR(STRING_ELT(seq, i)), startp[i], endp[i]);
+        memcpy((char*) ans_elt_holder.ptr, seqstr, widthp[i]);
         if (lkup != R_NilValue &&
             translate(&ans_elt_holder, INTEGER(lkup), LENGTH(lkup)) != 0)
             Rf_error(" record %d (%s:%d-%d) contains invalid DNA letters",
