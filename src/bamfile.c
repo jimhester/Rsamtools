@@ -16,18 +16,24 @@ void _check_isbamfile(SEXP ext, const char *lbl)
 samFile *_bam_tryopen(const char *filename, const char *filemode)
 {
     samFile *sfile = hts_open(filename, filemode);
-    /* header is now independent of samFile, so test separately */
-    bam_hdr_t *head = sam_hdr_read(sfile);
-    if (sfile == 0)
+    if (sfile == NULL)
         Rf_error("failed to open SAM/BAM file\n  file: '%s'", filename);
-    /* test if header empty */
-    if (head == NULL || head->n_targets == 0) {
-        bam_hdr_destroy(head);
-        sam_close(sfile);
-        Rf_error("SAM/BAM header missing or empty\n  file: '%s'", filename);
-    }
-    bam_hdr_destroy(head);
     return sfile;
+}
+
+bam_hdr_t *_bam_tryheaderload(BAM_FILE bfile) {
+    if(bfile->file == NULL)
+        Rf_error("internal: trying to read header, but file == NULL");
+    off_t seekptr = bgzf_tell(bfile->file->fp.bgzf);
+    bgzf_seek(bfile->file->fp.bgzf, 0, SEEK_SET);
+    bam_hdr_t *head = sam_hdr_read(bfile->file);
+    if(head == NULL || head->n_targets == 0)
+        Rf_error("trying to read header of file '%s'\n"
+                 "failed or there are no seqnames in header",
+                 bfile->file->fn);
+    if(seekptr)
+        bgzf_seek(bfile->file->fp.bgzf, seekptr, SEEK_SET);
+    return head;
 }
 
 static hts_idx_t *_bam_tryindexload(const char *indexname)
@@ -44,6 +50,8 @@ static void _bamfile_close(SEXP ext)
     BAM_FILE bfile = BAMFILE(ext);
     if (NULL != bfile->file)
         sam_close(bfile->file);
+    if (NULL != bfile->header)
+        bam_hdr_destroy(bfile->header);
     if (NULL != bfile->index)
         hts_idx_destroy(bfile->index);
     if (NULL != bfile->iter)
@@ -51,6 +59,7 @@ static void _bamfile_close(SEXP ext)
     if (NULL != bfile->pbuffer)
         pileup_pbuffer_destroy(bfile->pbuffer);
     bfile->file = NULL;
+    bfile->header = NULL;
     bfile->index = NULL;
     bfile->iter = NULL;
 }
@@ -75,7 +84,7 @@ static BAM_FILE _bamfile_open_r(SEXP filename, SEXP indexname, SEXP filemode)
 {
     BAM_FILE bfile = (BAM_FILE) Calloc(1, _BAM_FILE);
 
-    bfile->file = NULL;
+    bfile->file = NULL, bfile->header = NULL;
     if (0 != Rf_length(filename)) {
         const char *cfile = translateChar(STRING_ELT(filename, 0));
         bfile->file = _bam_tryopen(cfile, CHAR(STRING_ELT(filemode, 0)));
@@ -87,6 +96,9 @@ static BAM_FILE _bamfile_open_r(SEXP filename, SEXP indexname, SEXP filemode)
         }
         bfile->pos0 = bgzf_tell(bfile->file->fp.bgzf);
         bfile->irange0 = 0;
+
+        /* try reading header */
+        bfile->header = _bam_tryheaderload(bfile);
     }
 
     bfile->index = NULL;

@@ -14,6 +14,7 @@ extern "C" {
 
 typedef struct {
     samFile *file;
+    bam_hdr_t *header;
     hts_idx_t *index;
     uint64_t pos0;
     int irange0;

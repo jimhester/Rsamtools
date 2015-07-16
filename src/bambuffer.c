@@ -161,7 +161,7 @@ SEXP bambuffer_write(SEXP bufext, SEXP bamext, SEXP filter)
     _check_isbamfile(bamext, "bamBuffer, 'write'");
     bfile = BAMFILE(bamext);
 
-    bam_hdr_t *head = sam_hdr_read(bfile->file);
+    bam_hdr_t *head = bfile->header;
     n = buf->i;
     for (int i = 0; i < n; ++i)
         if (LOGICAL(filter)[i % filt_n]) {
@@ -169,7 +169,6 @@ SEXP bambuffer_write(SEXP bufext, SEXP bamext, SEXP filter)
             if (status <= 0)
                 Rf_error("'bamBuffer' write failed, record %d", i);
         }
-    bam_hdr_destroy(head);
 
     bambuffer_reset(buf);
     return ScalarInteger(n);
