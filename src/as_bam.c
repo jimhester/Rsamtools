@@ -1,18 +1,16 @@
 #include "sam.h"
 #include "bamfile.h"
 
-int _as_bam(samFile * fin, samFile * fout)
+int _as_bam(samFile * fin, bam_hdr_t *inhdr, samFile * fout)
 {
+    /* header already written to fout by `as_bam`, so just records */
     bam1_t *b = bam_init1();
     int r, count = 0;
-    bam_hdr_t *hdr = sam_hdr_read(fin);
 
-    while (0 <= (r = sam_read1(fin, hdr, b))) {
-        /* less general than sam_write1--maybe bam_write1 faster */
-        bam_write1(fout->fp.bgzf, b);
+    while (0 <= (r = sam_read1(fin, inhdr, b))) {
+        sam_write1(fout, inhdr, b);
         count++;
     }
-    bam_hdr_destroy(hdr);
     bam_destroy1(b);
 
     return r >= -1 ? count : -1 * count;
@@ -28,34 +26,36 @@ SEXP as_bam(SEXP file, SEXP destination, SEXP binary)
         Rf_error("'binary' must be logical(1)");
 
     samFile *fin, *fout;
+    const char *finname = translateChar(STRING_ELT(file, 0)),
+        *foutname = translateChar(STRING_ELT(destination, 0));
     bam_hdr_t *hdr;
     if (LOGICAL(binary)[0]) {
         /* SAM --> BAM */
-        fin = _bam_tryopen(translateChar(STRING_ELT(file, 0)), "r");
+        fin = _bam_tryopen(finname, "r");
         if(fin == NULL) {
-            Rf_error("failed to open samfile '%s'",
-                     translateChar(STRING_ELT(file, 0)));
+            Rf_error("failed to open SAM file '%s'", finname);
         }
-        /* header no longer bundled with file (no `header` member) */
         hdr = sam_hdr_read(fin);
-        /* check that header opened correctly? */
+        if(hdr == NULL)
+            Rf_error("failed to read header of SAM file '%s'", finname);
 
-        fout = _bam_tryopen(translateChar(STRING_ELT(destination, 0)), "wb");
+        fout = _bam_tryopen(foutname, "wb");
     } else {
         /* BAM --> SAM */
-        fin = _bam_tryopen(translateChar(STRING_ELT(file, 0)), "rb");
+        fin = _bam_tryopen(finname, "rb");
         if(fin == NULL) {
-            Rf_error("failed to open bamfile '%s'",
-                     translateChar(STRING_ELT(file, 0)));
+            Rf_error("failed to open BAM file '%s'", finname);
         }
-        /* FIX ME: Always start by writing header ? */
         hdr = sam_hdr_read(fin);
+        if(hdr == NULL)
+            Rf_error("failed to read header of BAM file '%s'", finname);
 
-        fout = _bam_tryopen(translateChar(STRING_ELT(destination, 0)), "wh");
+        fout = _bam_tryopen(foutname, "wh");
     }
     sam_hdr_write(fout, hdr);
-    int count = _as_bam(fin, fout);
+    int count = _as_bam(fin, hdr, fout);
 
+    bam_hdr_destroy(hdr);
     sam_close(fin);
     sam_close(fout);
     if (count < 0)
