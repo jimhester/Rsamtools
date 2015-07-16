@@ -39,6 +39,8 @@ PileupParam <-
 {
     ## argument checking
     stopifnot(isSingleNumber(max_depth))
+    if(max_depth < 1)
+        stop("'max_depth' must be greater than 0, got '", max_depth, "'")
     stopifnot(isSingleNumber(min_base_quality))
     stopifnot(isSingleNumber(min_mapq))
     stopifnot(isSingleNumber(min_nucleotide_depth))
