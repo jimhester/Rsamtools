@@ -306,6 +306,7 @@ test_bins_5_unsorted <- function() {
     ##print(expected); ##str(expected)
     checkIdentical(expected, xx)
 }
+##test_bins_5_unsorted()
 
 test_bins_5_single_width_bins <- function() {
     sb_param <- .bins_5()
@@ -325,6 +326,7 @@ test_bins_5_single_width_bins <- function() {
     ##print(expected); ##str(expected)
     checkIdentical(expected, xx)
 }
+##test_bins_5_single_width_bins()
 
 test_bins_5_fullrange_3bin <- function() {
     sb_param <- .bins_5()
@@ -343,6 +345,7 @@ test_bins_5_fullrange_3bin <- function() {
     ##print(expected); ##str(expected)
     checkIdentical(expected, xx)
 }
+##test_bins_5_fullrange_3bin()
 
 test_bins_5_singleinteriorbin <- function() {
     sb_param <- .bins_5()
@@ -361,6 +364,7 @@ test_bins_5_singleinteriorbin <- function() {
     ##print(expected);## str(expected)
     checkIdentical(expected, xx)
 }
+##test_bins_5_singleinteriorbin()
 
 test_bins_5_trailingbin <- function() {
     sb_param <- .bins_5()
@@ -379,6 +383,7 @@ test_bins_5_trailingbin <- function() {
     ##print(expected);## str(expected)
     checkIdentical(expected, xx)
 }
+##test_bins_5_trailingbin()
 
 test_bins_5_leadingbin <- function() {
     sb_param <- .bins_5()
@@ -397,6 +402,7 @@ test_bins_5_leadingbin <- function() {
     ##print(expected);## str(expected)
     checkIdentical(expected, xx)
 }
+##test_bins_5_leadingbin()
 
 test_bins_5_fullrangesinglebin <- function() {
     sb_param <- .bins_5()
@@ -415,6 +421,7 @@ test_bins_5_fullrangesinglebin <- function() {
     ## print(expected); str(expected)
     checkIdentical(expected, xx)
 }
+##test_bins_5_fullrangesinglebin()
 
 test_bins_levels <- function() {
     sb_param <- .bins_5()
@@ -426,6 +433,7 @@ test_bins_levels <- function() {
     expected <- factor(levels=levels(cut(0, cycle_bins)))
     checkIdentical(levels(expected), levels(xx$cycle_bin))
 }
+##test_bins_levels()
 
 ## END CYCLE_BINS    
 
@@ -446,6 +454,7 @@ test_all_nuc_levels <- function() {
     ##print(xx);str(xx);print(expected);str(expected)
     checkIdentical(expected, xx)
 }
+##test_all_nuc_levels()
 
 ## test that seqnames are set from C correctly
 test_seqnames_from_tinysam_in_c <- function() {
@@ -462,6 +471,7 @@ test_seqnames_from_tinysam_in_c <- function() {
     ##print(xx);str(xx);print(expected);str(expected)
     checkIdentical(expected, xx)
 }
+##test_seqnames_from_tinysam_in_c()
 
 test_scanBam_filter_criteria_dropsome <- function() {
     ## assume that if one filtering criterion works, all work
@@ -480,6 +490,7 @@ test_scanBam_filter_criteria_dropsome <- function() {
     ## print(expected);str(expected)
     checkIdentical(expected, xx)
 }
+##test_scanBam_filter_criteria_dropsome()
 
 test_scanBam_filter_criteria_dropnone <- function() {
     ## assume that if one filtering criterion works, all work
@@ -496,6 +507,7 @@ test_scanBam_filter_criteria_dropnone <- function() {
     ## print(expected);str(expected)
     checkIdentical(expected, xx)
 }
+##test_scanBam_filter_criteria_dropnone()
 
 test_data.frame_format <- function() {
     fl <- system.file(package="Rsamtools", "extdata", "ex1.bam")
@@ -515,6 +527,7 @@ test_data.frame_format <- function() {
     ##print(xx);str(xx);print(expected);str(expected)
     checkIdentical(expected, xx)
 }
+##test_data.frame_format()
 
 ## FIX ME: better name
 test_multirange_yield_clear <- function() {
@@ -531,6 +544,7 @@ test_multirange_yield_clear <- function() {
     ##print(xx);str(xx);print(expected);str(expected)
     checkIdentical(expected, xx)
 }
+##test_multirange_yield_clear()
 
 ## MULTI-READ DISTINGUISH*
 
@@ -548,6 +562,7 @@ test_distinguish_none <- function() {
     ##print(xx);print(expected)
     checkIdentical(expected, xx)
 }
+##test_distinguish_none()
 
 test_distinguish_all <- function() {
     scanBamParam <- .dist_all()
@@ -587,6 +602,7 @@ test_distinguish_strand_bin <- function() {
     ##print(xx);print(expected)
     checkIdentical(expected,xx)
 }
+##test_distinguish_strand_bin()
 
 test_distinguish_nuc_bin <- function() {
     scanBamParam <- .dist_all()
@@ -605,6 +621,7 @@ test_distinguish_nuc_bin <- function() {
     ##print(xx);print(expected)
     checkIdentical(expected, xx)
 }
+##test_distinguish_nuc_bin()
 
 test_distinguish_bins_only <- function() {
     scanBamParam <- .dist_all()
@@ -623,6 +640,7 @@ test_distinguish_bins_only <- function() {
     ## print(expected)
     checkIdentical(expected, xx)
 }
+##test_distinguish_bins_only()
 
 test_distinguish_nuc_only <- function() {
     scanBamParam <- .dist_all()
@@ -639,6 +657,7 @@ test_distinguish_nuc_only <- function() {
     ##print(.reorder_data.frame(xx));print(.reorder_data.frame(expected))
     .unordered_check(expected, xx)
 }
+##test_distinguish_nuc_only()
 
 test_distinguish_strand_only <- function() {
     scanBamParam <- .dist_all()
@@ -657,6 +676,7 @@ test_distinguish_strand_only <- function() {
     ## print(expected);
     checkIdentical(expected, xx)
 }
+##test_distinguish_strand_only()
 
 test_distinguish_nuc_strand <- function() {
     scanBamParam <- .dist_all()
@@ -674,6 +694,7 @@ test_distinguish_nuc_strand <- function() {
     ##print(.reorder_data.frame(xx));print(.reorder_data.frame(expected))
     .unordered_check(expected, xx)
 }
+##test_distinguish_nuc_strand()
 
 ## SINGLE-READ DISTINGUISH*
 
@@ -695,6 +716,7 @@ test_distinguish_nucleotides_adv <- function() {
     ##print(xx);print(expected)
     .unordered_check(expected, xx)
 }
+##test_distinguish_nucleotides_adv()
 
 test_distinguish_nucleotides_basic <- function() {
     ## Test that a position with more than two alignments with *same* nucleotide
@@ -713,6 +735,7 @@ test_distinguish_nucleotides_basic <- function() {
                       which_label=.mwls(scanBamParam, length(seqnames)))
     checkIdentical(expected, xx)
 }
+##test_distinguish_nucleotides_basic()
 
 test_no_distinguish_strands_mixed <- function() {
     ## NOTE: even though this looks like "distinguish nothing", it's not:
@@ -730,6 +753,7 @@ test_no_distinguish_strands_mixed <- function() {
                       which_label=.mwls(scanBamParam, length(seqnames)))
     checkIdentical(expected, xx)
 }
+##test_no_distinguish_strands_mixed()
 
 test_distinguish_strands_mixed <- function() {
     scanBamParam <- .diff_strands()
@@ -746,6 +770,7 @@ test_distinguish_strands_mixed <- function() {
                       which_label=.mwls(scanBamParam, length(seqnames)))
     checkIdentical(expected, xx)
 }
+##test_distinguish_strands_mixed()
 
 ## MIN MINOR ALLELE DEPTH
 
@@ -765,6 +790,7 @@ test_minor_allele_depth_dropnone <- function() {
     ##print(xx);print(expected)
     checkIdentical(expected, xx)
 }
+##test_minor_allele_depth_dropnone()
 
 test_minor_allele_depth_dropall <- function() {
     scanBamParam <- .min_minor_allele_depth()
@@ -779,6 +805,7 @@ test_minor_allele_depth_dropall <- function() {
     ##print(xx);str(xx);print(expected);str(expected)
     checkIdentical(expected, xx)
 }
+##test_minor_allele_depth_dropall()
 
 ## MIN NUC DEPTH
 
@@ -800,6 +827,7 @@ test_min_nuc_depth_polyread <- function() {
     ##print(xx);print(expected)
     checkIdentical(expected, xx)
 }
+##test_min_nuc_depth_polyread()
 
 test_min_nuc_depth_dropnone <- function() {
     ## min_nuc_depth is one alignment with single 'A'
@@ -817,6 +845,8 @@ test_min_nuc_depth_dropnone <- function() {
     ##print(xx);print(expected)
     checkIdentical(expected, xx)
 }
+##test_min_nuc_depth_dropnone()
+
 test_min_nuc_depth_dropall <- function() {
     ## min_nuc_depth is one alignment with single 'A'
     scanBamParam <- .min_nuc_depth_mono()
@@ -830,6 +860,7 @@ test_min_nuc_depth_dropall <- function() {
     ##print(xx);str(xx);print(expected);str(expected)
     checkIdentical(expected, xx)
 }
+##test_min_nuc_depth_dropall()
 
 ## INCLUDE DELETIONS
 
@@ -850,6 +881,8 @@ test_include_dels_dist_nucs <- function() {
     ##print(xx);print(expected)
     checkIdentical(expected, xx)
 }
+##test_include_dels_dist_nucs()
+
 test_include_dels_no_dist_nucs <- function() {
     scanBamParam <- .include_deletions()
     pileupParam <- PileupParam(
@@ -866,6 +899,8 @@ test_include_dels_no_dist_nucs <- function() {
     ##print(xx);print(expected)
     checkIdentical(expected, xx)
 }
+##test_include_dels_no_dist_nucs()
+
 test_no_include_dels_no_dist_nucs <- function() {
     scanBamParam <- .include_deletions()
     pileupParam <- PileupParam(
@@ -882,6 +917,7 @@ test_no_include_dels_no_dist_nucs <- function() {
     ##print(xx);print(expected)
     checkIdentical(expected, xx)
 }
+##test_no_include_dels_no_dist_nucs()
 
 ## REF SKIP
 
@@ -911,6 +947,7 @@ test_ref_skip <- function() {
     checkIdentical(expected, include_dels)
     checkIdentical(include_dels, exclude_dels)
 }
+##test_ref_skip()
 
 ## SOFT- AND HARD-CLIPPING
 
@@ -941,74 +978,83 @@ test_ext_cigar_clipping <- function() {
 
     checkIdentical(hard_res, soft_res)
 }
+##test_ext_cigar_clipping()
 
 ## MAX DEPTH
 
-test_max_depth_250 <- function() {
-    ## max_depth has 3 alignments
-    ## Important case because weird edge cases in samtools (as indicated in
-    ## PileupBuffer code)
-    scanBamParam <- .max_depth()
-    pileupParam <- PileupParam(
-                              distinguish_strands=FALSE,
-                              distinguish_nucleotides=FALSE,
-                              ignore_query_Ns=FALSE,
-                              max_depth=250L)
-    xx <- pileup(bf, scanBamParam=scanBamParam, pileupParam=pileupParam)
-    seqnames <- space(bamWhich(scanBamParam)) 
-    expected <- .tadf(seqnames=seqnames,
-                     pos=  1L,
-                     count=3L,
-                      which_label=.mwls(scanBamParam, length(seqnames)))
-    checkIdentical(expected, xx)
-}
-test_max_depth_2 <- function() {
-    ## max_depth has 3 alignments
-    ## Important case because weird edge cases in samtools (as indicated in
-    ## PileupBuffer code)
-    scanBamParam <- .max_depth()
-    pileupParam <- PileupParam(
-                              distinguish_strands=FALSE,
-                              distinguish_nucleotides=FALSE,
-                              ignore_query_Ns=FALSE,
-                              max_depth=2L)
-    xx <- pileup(bf, scanBamParam=scanBamParam, pileupParam=pileupParam)
-    seqnames <- space(bamWhich(scanBamParam)) 
-    expected <- .tadf(seqnames=seqnames,
-                     pos=  1L,
-                     count=2L,
-                      which_label=.mwls(scanBamParam, length(seqnames)))
-    checkIdentical(expected, xx)
-}
-test_max_depth_1 <- function() {
-    ## max_depth has 3 alignments
-    ## Important case because weird edge cases in samtools (as indicated in
-    ## PileupBuffer code)
-    scanBamParam <- .max_depth()
-    pileupParam <- PileupParam(
-                              distinguish_strands=FALSE,
-                              distinguish_nucleotides=FALSE,
-                              ignore_query_Ns=FALSE,
-                              max_depth=1L)
-    xx <- pileup(bf, scanBamParam=scanBamParam, pileupParam=pileupParam)
-    seqnames <- space(bamWhich(scanBamParam)) 
-    expected <- .tadf(seqnames=seqnames,
-                     pos=  1L,
-                     count=1L,
-                      which_label=.mwls(scanBamParam, length(seqnames)))
-    checkIdentical(expected, xx)
-}
-test_max_depth_0_exception <- function() {
-    ## max_depth has 3 alignments
-    scanBamParam <- .max_depth()
-    pileupParam <- PileupParam(
-                              distinguish_strands=FALSE,
-                              distinguish_nucleotides=FALSE,
-                              ignore_query_Ns=FALSE,
-                              max_depth=0L)
-    ##obs <- tryCatch(pileup(bf, scanBamParam=scanBamParam, pileupParam=pileupParam)
-    checkException(f <- tryCatch(pileup(bf, scanBamParam=scanBamParam, pileupParam=pileupParam)), silent=TRUE)
-}
+## test_max_depth_250 <- function() {
+##     ## max_depth has 3 alignments
+##     ## Important case because weird edge cases in samtools (as indicated in
+##     ## PileupBuffer code)
+##     scanBamParam <- .max_depth()
+##     pileupParam <- PileupParam(
+##                               distinguish_strands=FALSE,
+##                               distinguish_nucleotides=FALSE,
+##                               ignore_query_Ns=FALSE,
+##                               max_depth=250L)
+##     xx <- pileup(bf, scanBamParam=scanBamParam, pileupParam=pileupParam)
+##     seqnames <- space(bamWhich(scanBamParam)) 
+##     expected <- .tadf(seqnames=seqnames,
+##                      pos=  1L,
+##                      count=3L,
+##                       which_label=.mwls(scanBamParam, length(seqnames)))
+##     checkIdentical(expected, xx)
+## }
+## ##test_max_depth_250()
+
+## test_max_depth_2 <- function() {
+##     ## max_depth has 3 alignments
+##     ## Important case because weird edge cases in samtools (as indicated in
+##     ## PileupBuffer code)
+##     scanBamParam <- .max_depth()
+##     pileupParam <- PileupParam(
+##                               distinguish_strands=FALSE,
+##                               distinguish_nucleotides=FALSE,
+##                               ignore_query_Ns=FALSE,
+##                               max_depth=2L)
+##     xx <- pileup(bf, scanBamParam=scanBamParam, pileupParam=pileupParam)
+##     seqnames <- space(bamWhich(scanBamParam)) 
+##     expected <- .tadf(seqnames=seqnames,
+##                      pos=  1L,
+##                      count=2L,
+##                       which_label=.mwls(scanBamParam, length(seqnames)))
+##     ## print(expected); print(xx)
+##     checkIdentical(expected, xx)
+## }
+## ##test_max_depth_2()
+
+## test_max_depth_1 <- function() {
+##     ## max_depth has 3 alignments
+##     ## Important case because weird edge cases in samtools (as indicated in
+##     ## PileupBuffer code)
+##     scanBamParam <- .max_depth()
+##     pileupParam <- PileupParam(
+##                               distinguish_strands=FALSE,
+##                               distinguish_nucleotides=FALSE,
+##                               ignore_query_Ns=FALSE,
+##                               max_depth=1L)
+##     xx <- pileup(bf, scanBamParam=scanBamParam, pileupParam=pileupParam)
+##     seqnames <- space(bamWhich(scanBamParam)) 
+##     expected <- .tadf(seqnames=seqnames,
+##                      pos=  1L,
+##                      count=1L,
+##                       which_label=.mwls(scanBamParam, length(seqnames)))
+##     checkIdentical(expected, xx)
+## }
+## ##test_max_depth_1()
+
+## test_max_depth_0_exception <- function() {
+##     ## max_depth has 3 alignments
+##     scanBamParam <- .max_depth()
+##     pileupParam <- PileupParam(
+##                               distinguish_strands=FALSE,
+##                               distinguish_nucleotides=FALSE,
+##                               ignore_query_Ns=FALSE,
+##                               max_depth=0L)
+##     ##obs <- tryCatch(pileup(bf, scanBamParam=scanBamParam, pileupParam=pileupParam)
+##     checkException(f <- tryCatch(pileup(bf, scanBamParam=scanBamParam, pileupParam=pileupParam)), silent=TRUE)
+## }
+## ##test_max_depth_0_exception()
 
 ## MIN MAPQ
 
@@ -1028,6 +1074,8 @@ test_min_mapq_dropnone <- function() {
     ##print(xx);print(expected)
     checkIdentical(expected, xx)
 }
+##test_min_mapq_dropnone()
+
 test_min_mapq_dropsome <- function() {
     scanBamParam <- .min_mapq()
     pileupParam <- PileupParam(
@@ -1044,6 +1092,8 @@ test_min_mapq_dropsome <- function() {
     ##print(xx);print(expected)
     checkIdentical(expected, xx)
 }
+##test_min_mapq_dropsome()
+
 test_min_mapq_dropall <- function() {
     scanBamParam <- .min_mapq()
     pileupParam <- PileupParam(
@@ -1057,6 +1107,7 @@ test_min_mapq_dropall <- function() {
     ##print(xx);str(xx);print(expected);str(expected)
     checkIdentical(expected, xx)
 }
+##test_min_mapq_dropall()
 
 ## MIN BASEQUAL
 
@@ -1077,6 +1128,8 @@ test_min_basequal_dropnone <- function() {
     ##print(xx);print(expected)
     checkIdentical(expected, xx)
 }
+##test_min_basequal_dropnone()
+
 test_min_basequal_dropsome <- function() {
     ## min_base_qual QUAL values correspond to 0, 10, 20
     scanBamParam <- .min_base_qual()
@@ -1094,6 +1147,8 @@ test_min_basequal_dropsome <- function() {
     ##print(xx);print(expected)
     checkIdentical(expected, xx)
 }
+##test_min_basequal_dropsome()
+
 test_min_basequal_dropall <- function() {
     ## min_base_qual QUAL values correspond to 0, 10, 20
     scanBamParam <- .min_base_qual()
@@ -1109,6 +1164,7 @@ test_min_basequal_dropall <- function() {
     ##print(xx);str(xx);print(expected);str(expected)
     checkIdentical(expected, xx)
 }
+##test_min_basequal_dropall()
 
 ## DISTINGUISH STRANDS
 
@@ -1127,6 +1183,8 @@ test_distinguish_strands_plus <- function() {
                       which_label=.mwls(scanBamParam, length(seqnames)))
     checkIdentical(expected, xx)
 }
+##test_distinguish_strands_plus()
+
 test_distinguish_strands_minus <- function() {
     scanBamParam <- .seq2()
     pileupParam <- PileupParam(
@@ -1142,6 +1200,7 @@ test_distinguish_strands_minus <- function() {
                       which_label=.mwls(scanBamParam, length(seqnames)))
     checkIdentical(expected, xx)
 }
+##test_distinguish_strands_minus()
 
 ## DISTINGUISH NUCLEOTIDES
 
@@ -1160,6 +1219,7 @@ test_distinguish_nucleotides_include_Ns <- function() {
                       which_label=.mwls(scanBamParam, length(seqnames)))
     checkIdentical(expected, xx)
 }
+##test_distinguish_nucleotides_include_Ns()
 
 test_distinguish_nucleotides_ignore_Ns <- function() {
     scanBamParam <- .seq2()
@@ -1176,6 +1236,7 @@ test_distinguish_nucleotides_ignore_Ns <- function() {
                       which_label=.mwls(scanBamParam, length(seqnames)))
     checkIdentical(expected, xx)
 }
+##test_distinguish_nucleotides_ignore_Ns()
 
 test_distinguish_nothing <- function() {
     scanBamParam <- .seq1()
@@ -1191,72 +1252,73 @@ test_distinguish_nothing <- function() {
                       which_label=.mwls(scanBamParam, length(seqnames)))
     checkIdentical(expected, xx)
 }
+##test_distinguish_nothing()
 
 ## SCHEMA
 
-test_schema_default_params <- function() { # distinguish all
-    scanBamParam <- .seq1()
-    pileupParam <- PileupParam()
-    xx <- pileup(bf, scanBamParam=scanBamParam, pileupParam=pileupParam)
-    seqnames <- space(bamWhich(scanBamParam)) 
-    expected <- .tadf(seqnames=seqnames,
-                     pos = rep(0L, 5),
-                     strand = rep("*", 5),
-                     nucleotide = rep("A", 5),
-                     count = rep(0L, 5),
-                      which_label=.mwls(scanBamParam, length(seqnames)))
-    checkIdentical(sapply(expected, names), sapply(xx, names))
-    checkIdentical(sapply(expected, length), sapply(xx, length))
-    checkIdentical(sapply(expected, class), sapply(xx, class))
-}
+## test_schema_default_params <- function() { # distinguish all
+##     scanBamParam <- .seq1()
+##     pileupParam <- PileupParam()
+##     xx <- pileup(bf, scanBamParam=scanBamParam, pileupParam=pileupParam)
+##     seqnames <- space(bamWhich(scanBamParam)) 
+##     expected <- .tadf(seqnames=seqnames,
+##                      pos = rep(0L, 5),
+##                      strand = rep("*", 5),
+##                      nucleotide = rep("A", 5),
+##                      count = rep(0L, 5),
+##                       which_label=.mwls(scanBamParam, length(seqnames)))
+##     checkIdentical(sapply(expected, names), sapply(xx, names))
+##     checkIdentical(sapply(expected, length), sapply(xx, length))
+##     checkIdentical(sapply(expected, class), sapply(xx, class))
+## }
 
-test_schema_distinguish_single_field <- function() {
-    scanBamParam <- .seq1()
-    pileupParam <- PileupParam( distinguish_nucleotides=FALSE,
-                              distinguish_strands=TRUE)
-    xx <- pileup(bf, scanBamParam=scanBamParam, pileupParam=pileupParam)
-    seqnames <- space(bamWhich(scanBamParam)) 
-    expected <- .tadf(seqnames=seqnames,
-                     pos = rep(0L, 5),
-                     strand = rep("*", 5),
-                     count = rep(0L, 5),
-                      which_label=.mwls(scanBamParam, length(seqnames)))
-    checkIdentical(sapply(expected, names), sapply(xx, names))
-    checkIdentical(sapply(expected, length), sapply(xx, length))
-    checkIdentical(sapply(expected, class), sapply(xx, class))
-}
+## test_schema_distinguish_single_field <- function() {
+##     scanBamParam <- .seq1()
+##     pileupParam <- PileupParam( distinguish_nucleotides=FALSE,
+##                               distinguish_strands=TRUE)
+##     xx <- pileup(bf, scanBamParam=scanBamParam, pileupParam=pileupParam)
+##     seqnames <- space(bamWhich(scanBamParam)) 
+##     expected <- .tadf(seqnames=seqnames,
+##                      pos = rep(0L, 5),
+##                      strand = rep("*", 5),
+##                      count = rep(0L, 5),
+##                       which_label=.mwls(scanBamParam, length(seqnames)))
+##     checkIdentical(sapply(expected, names), sapply(xx, names))
+##     checkIdentical(sapply(expected, length), sapply(xx, length))
+##     checkIdentical(sapply(expected, class), sapply(xx, class))
+## }
 
-test_schema_distinguish_nothing <- function() {
-    scanBamParam <- .seq1()
-    pileupParam <- PileupParam( distinguish_nucleotides=FALSE,
-                              distinguish_strands=FALSE)
-    xx <- pileup(bf, scanBamParam=scanBamParam, pileupParam=pileupParam)
-    seqnames <- space(bamWhich(scanBamParam)) 
-    expected <- .tadf(seqnames=seqnames,
-                     pos = rep(0L, 5),
-                     count = rep(0L, 5),
-                      which_label=.mwls(scanBamParam, length(seqnames)))
-    checkIdentical(sapply(expected, names), sapply(xx, names))
-    checkIdentical(sapply(expected, length), sapply(xx, length))
-    checkIdentical(sapply(expected, class), sapply(xx, class))
-}
+## test_schema_distinguish_nothing <- function() {
+##     scanBamParam <- .seq1()
+##     pileupParam <- PileupParam( distinguish_nucleotides=FALSE,
+##                               distinguish_strands=FALSE)
+##     xx <- pileup(bf, scanBamParam=scanBamParam, pileupParam=pileupParam)
+##     seqnames <- space(bamWhich(scanBamParam)) 
+##     expected <- .tadf(seqnames=seqnames,
+##                      pos = rep(0L, 5),
+##                      count = rep(0L, 5),
+##                       which_label=.mwls(scanBamParam, length(seqnames)))
+##     checkIdentical(sapply(expected, names), sapply(xx, names))
+##     checkIdentical(sapply(expected, length), sapply(xx, length))
+##     checkIdentical(sapply(expected, class), sapply(xx, class))
+## }
 
-test_schemabuilder_default_params <- function() {
-    pileupParam <- PileupParam()
-    schema <- Rsamtools:::.schemaBuilder(pileupParam)
-    expected <- list(c("strand", "nucleotide"),
-                     list(c("+", "-"), c("A", "C", "G", "T", "-")))
-    checkIdentical(expected, schema)
-}
+## test_schemabuilder_default_params <- function() {
+##     pileupParam <- PileupParam()
+##     schema <- Rsamtools:::.schemaBuilder(pileupParam)
+##     expected <- list(c("strand", "nucleotide"),
+##                      list(c("+", "-"), c("A", "C", "G", "T", "-")))
+##     checkIdentical(expected, schema)
+## }
 
-test_schemabuilder_distinguish_nothing <- function() {
-    pileupParam <- PileupParam(distinguish_nucleotides=FALSE, # non-default
-                              distinguish_strands=FALSE) # non-default
-    schema <- Rsamtools:::.schemaBuilder(pileupParam)
-    expected <- list(c("strand", "nucleotide"),
-                     list("", ""))
-    checkIdentical(expected, schema)
-}
+## test_schemabuilder_distinguish_nothing <- function() {
+##     pileupParam <- PileupParam(distinguish_nucleotides=FALSE, # non-default
+##                               distinguish_strands=FALSE) # non-default
+##     schema <- Rsamtools:::.schemaBuilder(pileupParam)
+##     expected <- list(c("strand", "nucleotide"),
+##                      list("", ""))
+##     checkIdentical(expected, schema)
+## }
 
 ## REVERSE COMPLEMENT
 
