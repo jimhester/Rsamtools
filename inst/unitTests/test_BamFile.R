@@ -34,7 +34,8 @@ test_BamFile_isIncomplete <- function()
 test_BamFile_corrupt_index <- function()
 {
     fl <- system.file("extdata", "ex1.bam", package="Rsamtools")
-    idx <- system.file("unitTests", "cases", "ex1_zero_index.bam.bai")
+    idx <- system.file("unitTests", "cases", "ex1_zero_index.bam.bai",
+                       package="Rsamtools", mustWork=TRUE)
     bf <- BamFile(fl, idx)
     checkException(suppressWarnings(open(bf)), silent=TRUE)
 }
