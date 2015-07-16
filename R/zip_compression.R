@@ -30,11 +30,3 @@ bgzip <-
 {
     .zip(.bgzip, file, dest, overwrite)
 }
-
-
-razip <-
-    function(file, dest = sprintf("%s.rz", sub("\\.gz$", "", file)),
-             overwrite=FALSE)
-{
-    .zip(.razip, file, dest, overwrite)
-}

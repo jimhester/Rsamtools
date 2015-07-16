@@ -2,7 +2,6 @@
 \Rdversion{1.1}
 
 \alias{bgzip}
-\alias{razip}
 
 \title{
 
@@ -19,8 +18,6 @@
 \usage{
 
 bgzip(file, dest=sprintf("\%s.bgz", sub("\\\\.gz$", "", file)),
-      overwrite = FALSE)
-razip(file, dest=sprintf("\%s.rz", sub("\\\\.gz$", "", file)),
       overwrite = FALSE)
 
 }
