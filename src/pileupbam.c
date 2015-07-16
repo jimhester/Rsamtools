@@ -67,7 +67,7 @@ static PILEUP_ITER_T *_iter_init(SEXP files, PILEUP_PARAM_T * param)
 {
     int i;
     PILEUP_ITER_T *iter = Calloc(1, PILEUP_ITER_T);
-    iter->n_files = Rf_length(files);;
+    iter->n_files = Rf_length(files);
     iter->mfile = Calloc(iter->n_files, BAM_ITER_T *);
     iter->mfile[0] = Calloc(iter->n_files, BAM_ITER_T);
     for (i = 0; i < iter->n_files; ++i) {
@@ -185,7 +185,7 @@ static int _mplp_read_bam(void *data, bam1_t * b)
     do {
         result = mdata->iter ?
             sam_itr_next(mdata->fp, mdata->iter, b) : bam_read1(mdata->fp->fp.bgzf, b);
-        if (0 >= result)
+        if (0 > result)
             break;
 
         skip = FALSE;
@@ -315,10 +315,8 @@ static void _mplp_setup_bam(const PILEUP_PARAM_T * param, const SPACE_T * spc,
     BAM_ITER_T **mfile = plp_iter->mfile;
 
     for (int j = 0; j < plp_iter->n_files; ++j) {
-        bam_hdr_t *header = sam_hdr_read(mfile[j]->bfile->file);
         /* set iterator, get pileup */
-        int32_t tid = bam_name2id(header, spc->chr);
-        bam_hdr_destroy(header);
+        int32_t tid = bam_name2id(mfile[j]->bfile->header, spc->chr);
         if (tid < 0)
             Rf_error("'%s' not in bam file %d", spc->chr, j + 1);
         mfile[j]->iter = bam_itr_queryi(mfile[j]->bfile->index, tid,
@@ -335,6 +333,14 @@ static void _mplp_teardown_bam(PILEUP_ITER_T * iter)
     REprintf("_mplp_teardown_bam\n");
 #endif
     int j;
+
+    /* run down any remaining allocated memory in the pileup iterator */
+    int32_t tid;
+    int pos;
+    int *n_plp = iter->n_plp;
+    const bam_pileup1_t **plp = iter->plp;
+    /* side effect is to free memory pool */
+    while(0 < bam_mplp_auto(iter->mplp_iter, &tid, &pos, n_plp, plp)) { }
 
     bam_mplp_destroy(iter->mplp_iter);
     for (j = 0; j < iter->n_files; ++j)

@@ -40,6 +40,7 @@ public:
     void plpbuf_push(const bam1_t *bam) {
         bam_plp_push(plpbuf, bam);
     }
+    virtual void runInsertLoop() = 0;
     virtual void plpbuf_init() = 0;
     virtual SEXP yield() = 0;
     virtual void signalEOI() = 0;
@@ -152,12 +153,15 @@ public:
     void plpbuf_init() {
         plpbuf = bam_plp_init(NULL, this);
         int theDepth = max_depth();
-        if(theDepth < 1)
+        if(theDepth < 1) {
+            plpbuf_destroy();
             Rf_error("'max_depth' must be greater than 0, got '%d'", theDepth);
+        }
         // +1 essential because when maxcnt > 1 num reads processed = maxcnt - 1
         int num_reads_to_process = theDepth < 2 ? 1 : theDepth + 1;
         bam_plp_set_maxcnt(plpbuf, num_reads_to_process);
     }
+    void runInsertLoop();
     static int insert(uint32_t tid, uint32_t pos, int n,
                       const bam_pileup1_t *pl, void *data);
     SEXP yield();

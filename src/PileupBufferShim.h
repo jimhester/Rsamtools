@@ -26,16 +26,21 @@ public:
     }
     void finish1(const int irange) {
         plbuf_push(0);
+        buffer.runInsertLoop();
         SET_VECTOR_ELT(result, irange, buffer.yield());
         buffer.plpbuf_destroy();
     }
-    // The only way to trigger running the callback function
-    // (Pileup::insert in this case) is to push NULL to the buffer and
-    // destroy it. Therefore, must destroy and recreate plbuf each
-    // time yieldSize records are pushed.
+    // In previous incarnation of samtools the only way to trigger the
+    // callback function (Pileup::insert in our case) was to push NULL
+    // to the buffer and destroy it. Taking those steps in the new
+    // version just causes that memory to leak! So now we have a
+    // function that explicitly does the work of calling the
+    // callback. Note also that we still destory and create the buffer
+    // anew each time yieldSize records are pushed.
     void process_yieldSize_chunk() {
         plbuf_push(0);
-        buffer.plpbuf_destroy(); // trigger run of Pileup::insert
+        buffer.runInsertLoop();
+        buffer.plpbuf_destroy();
         buffer.init(NULL, 0, 0);
     }
     // intended to be called from _pileup_bam after EOI message sent

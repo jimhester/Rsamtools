@@ -142,10 +142,10 @@ extern "C" {
             Rf_error("'schema' must be list()");
         if (!Rf_isVector(pileupParams))
             Rf_error("'pileupParams' must be list()");
-        bam_hdr_t *hdr = sam_hdr_read(BAMFILE(ext)->file);
+        bam_hdr_t *hdr = BAMFILE(ext)->header;
         SEXP seqnamesLevels =
             PROTECT(_bamheaderAsSeqnames(hdr));
-        bam_hdr_destroy(hdr);
+
         // 'ranged' means user asked for specific genomic range(s) by
         // providing 'which' argument to 'ScanBamParam'
         bool isRanged = space != R_NilValue;

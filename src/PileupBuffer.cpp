@@ -4,6 +4,14 @@ void Pileup::signalEOI() {
     resultMgr->signalEOI();
 }
 
+void Pileup::runInsertLoop() {
+    int tid, pos, n_plp;
+    const bam_pileup1_t *pl;
+    while( (pl = bam_plp_next(plpbuf, &tid, &pos, &n_plp)) != NULL ) {
+        insert(tid, pos, n_plp, pl, this);
+    }
+}
+
 int Pileup::insert(uint32_t tid, uint32_t pos, int n,
                         const bam_pileup1_t *pl, void *data)
 {
