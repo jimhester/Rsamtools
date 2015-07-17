@@ -1,0 +1,29 @@
+* Remaining issues (varied severity)
+** pileup speed
+** maxcnt issue (less severe)
+See https://github.com/samtools/htslib/issues/243 and my two cents at
+https://github.com/samtools/samtools/issues/29.
+
+Note: samtoolsnew is built following directions at
+http://www.htslib.org/download/; version at the time was samtool-1.2
+
+I've used ERR127306_chr14.bam from the RNAseqData.HNRNPC.bam.chr14
+package.
+
+chr14, position 91233066 has, as reported by the new samtools mpileup,
+a depth of 452.
+
+Contrast:
+
+  mpileup -r chr14:91233066-91233066 path/to/ERR127306_chr14.bam
+
+with
+
+  mpileup -r chr14:91233066-91233066 -d 200 path/to/ERR127306_chr14.bam
+
+(Hint: they're identical)
+
+# to find the position with the max depth (not that you need to):
+samtoolsnew mpileup ERR127306_chr14.bam > /tmp/chr14pileup
+awk 'BEGIN { max=0; ln="wut" } { if($4 > max) { max = $4; ln = $0  } } END { print max "\n" ln }' /tmp/chr14pileup
+
