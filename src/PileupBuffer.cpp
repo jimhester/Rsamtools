@@ -4,6 +4,8 @@ void Pileup::signalEOI() {
     resultMgr->signalEOI();
 }
 
+// this consumes the pileup iterator (if appropriate) and passes data
+// to the Pileup::insert function
 void Pileup::runInsertLoop() {
     int tid, pos, n_plp;
     const bam_pileup1_t *pl;

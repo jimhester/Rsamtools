@@ -12,6 +12,7 @@ static int _filter_and_parse1_pileup(const bam1_t *bam, void *data)
         PileupBufferShim *shim = (PileupBufferShim *) bd->extra;
         // push to buffer the alignments that meet criteria
         shim->plbuf_push(bam);
+        shim->runInsertLoop();
     }
     bd->iparsed += 1;
     return result;

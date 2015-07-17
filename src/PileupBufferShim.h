@@ -24,6 +24,10 @@ public:
                 INTEGER(VECTOR_ELT(space, 2))[irange]);
         }
     }
+    // expose calling runInsertLoop on member PileupBuffer
+    void runInsertLoop() {
+        buffer.runInsertLoop();
+    }
     void finish1(const int irange) {
         plbuf_push(0);
         buffer.runInsertLoop();
