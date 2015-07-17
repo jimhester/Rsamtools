@@ -10,6 +10,7 @@ test_catch_samtools <- function()
     })), error=function(msg) {
         err <<- TRUE
     })
-    checkTrue(warn)
+    ## new samtools only emits error, with no warning
+    checkTrue(!warn)
     checkTrue(err)
 }
