@@ -25,13 +25,15 @@ test_BcfFile_openclose <- function()
 
 test_BcfFile_scanBcfHeader <- function()
 {
+    ## Updated from original samtools with older BCF specification;
+    ## the new spec requires additional header info in BCF file
     .chk <- function(h) {
         checkTrue(validObject(h))
         checkEquals(3L, length(h))
         checkEquals(2L, length(h[["Reference"]]))
         checkEquals("ex1.bam", h[["Sample"]])
-        checkEquals(1L, length(h[["Header"]]))
-        checkEquals(c(0, 0), dim(h[["Header"]][["META"]]))
+        checkEquals(5L, length(h[["Header"]]))
+        checkEquals(c(1, 1), dim(h[["Header"]][["META"]]))
     }
     bf <- open(BcfFile(fl, character(0)))
     .chk(scanBcfHeader(bf))
