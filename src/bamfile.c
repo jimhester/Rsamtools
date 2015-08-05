@@ -126,6 +126,9 @@ static BAM_FILE _bamfile_open_w(SEXP file0, SEXP file1)
         Rf_error("'file1' must be a character(1) path to a valid bam file");
     infile = _bam_tryopen(translateChar(STRING_ELT(file1, 0)), "rb");
     outfile = _bam_tryopen(translateChar(STRING_ELT(file0, 0)), "wb");
+    bam_hdr_t *hdr = sam_hdr_read(infile);
+    sam_hdr_write(outfile, hdr);
+    bam_hdr_destroy(hdr);
     sam_close(infile);
 
     bfile = (BAM_FILE) Calloc(1, _BAM_FILE);
