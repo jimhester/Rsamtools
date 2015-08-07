@@ -245,7 +245,8 @@ static void _bcf_gi2sxp(SEXP geno, const int i_rec, const bcf_hdr_t * h,
         } else if (b->d.fmt[i].id == bcf_hdr_id2int(h, BCF_DT_ID, "GQ") ||
                    b->d.fmt[i].id == bcf_hdr_id2int(h, BCF_DT_ID, "SP")) {
             int *gq = INTEGER(g) + off;
-            if((nvals = bcf_get_format_int32(h, b, "DP", &intdest, &fieldmemsz)) < 0)
+            const char *id = bcf_hdr_int2id(h, BCF_DT_ID, b->d.fmt[i].id);
+            if((nvals = bcf_get_format_int32(h, b, id, &intdest, &fieldmemsz)) < 0)
                 Rf_error("internal: problem reading GQ or SP fmt field");
             for (int smplnum = 0; smplnum < b->n_sample; ++smplnum)
                 *gq++ = intdest[smplnum];
@@ -375,7 +376,7 @@ int scan_bcf_range(vcfFile * bcf, bcf_hdr_t * hdr, SEXP ans,
         INTEGER(VECTOR_ELT(ans, BCF_POS))[n] = bcf1->pos + 1;
         /* ID */
         colstring = kstrtok(NULL, NULL, &ksaux);
-        SET_STRING_ELT(VECTOR_ELT(ans, BCF_ID), n, 
+        SET_STRING_ELT(VECTOR_ELT(ans, BCF_ID), n,
                        mkCharLen(colstring, ksaux.p - colstring));
         /* REF */
         colstring = kstrtok(NULL, NULL, &ksaux);
@@ -401,7 +402,7 @@ int scan_bcf_range(vcfFile * bcf, bcf_hdr_t * hdr, SEXP ans,
         colstring = kstrtok(NULL, "\n", &ksaux);
         SET_STRING_ELT(VECTOR_ELT(ans, BCF_FMT), n,
                        mkCharLen(colstring, ksaux.p - colstring));
-                       
+
         _bcf_gi2sxp(VECTOR_ELT(ans, BCF_GENO), n, hdr, bcf1);
         ++n;
 
@@ -458,7 +459,7 @@ SEXP scan_bcf(SEXP ext, SEXP space, SEXP tmpl)
         }
     }
     _bcf_ans_grow(tmpl, -1 * n, bcf_hdr_nsamples(hdr));
-    
+
     bcf_hdr_destroy(hdr);
     UNPROTECT(1);
     return tmpl;
