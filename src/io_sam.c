@@ -640,7 +640,6 @@ static int _filter1(const bam1_t * bam, void *data)
     bd->irec += 1;
     if (!_filter1_BAM_DATA(bam, bd))
         return 0;
-    Rf_error("FIX ME: is this right?");
     bam_write1(((samFile *) bd->extra)->fp.bgzf, bam);
     bd->iparsed += 1;
     return 1;
@@ -654,10 +653,9 @@ _filter_bam(SEXP bfile, SEXP space, SEXP keepFlags,
     BAM_DATA bd =
         _init_BAM_DATA(bfile, space, keepFlags, isSimpleCigar, tagFilter, 0,
                        NA_INTEGER, 0, 0, '\0', '\0', NULL);
-    /* FIXME: this just copies the header... */
-    /* bam_hdr_t *header = BAMFILE(bfile)->header; */
     samFile *f_out = _bam_tryopen(translateChar(STRING_ELT(fout_name, 0)),
-                                    CHAR(STRING_ELT(fout_mode, 0)));
+                                  CHAR(STRING_ELT(fout_mode, 0)));
+    sam_hdr_write(f_out, BAMFILE(bfile)->header);
     bd->extra = f_out;
 
     int status = _do_scan_bam(bd, space, _filter1, NULL, NULL);
